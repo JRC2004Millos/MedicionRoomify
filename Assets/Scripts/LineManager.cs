@@ -184,10 +184,34 @@ public class LineManager : MonoBehaviour
             TxtEstado?.SetText("Figura cerrada. Generando JSON...");
             string path = ExportarJSON();
             hud?.ShowExportResult(path);
+            AndroidNav.GoToCapture(path);
+
             TxtEstado?.SetText("JSON generado. Si quieres, puedes empezar otra medición.");
 
             // snapshot después de confirmar piso (por si el flujo continúa)
             SnapshotAtConfirm();
+        }
+    }
+
+    public static class AndroidNav
+    {
+        public static void GoToCapture(string jsonAbsolutePath)
+        {
+    #if UNITY_ANDROID && !UNITY_EDITOR
+            try
+            {
+                using (var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+                using (var currentActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
+                using (var navBridge = new AndroidJavaClass("com.example.roomify.NavigationBridge"))
+                {
+                    navBridge.CallStatic("openCaptureAndFinish", currentActivity, jsonAbsolutePath);
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("AndroidNav.GoToCapture error: " + e);
+            }
+    #endif
         }
     }
 
@@ -288,25 +312,28 @@ public class LineManager : MonoBehaviour
             // Vector2 toPos   = new Vector2(corners[j].position.x, corners[j].position.z);
 
             float distance = Vector2.Distance(fromPos, toPos);
-            string dir = CalcularDireccion(fromPos, toPos);
+            string dirPath = CalcularDireccion(fromPos, toPos);
 
             data.walls.Add(new Wall
             {
                 from = corners[i].id,
                 to = corners[j].id,
                 distance = distance,
-                direction = dir
+                direction = dirPath
             });
         }
 
         string json = JsonUtility.ToJson(data, true);
-        string path = Path.Combine(Application.persistentDataPath, "room_data.json");
-        File.WriteAllText(path, json);
+        string dir = Application.persistentDataPath;
+        string finalPath = Path.Combine(dir, "room_data.json");
+        string tmpPath   = Path.Combine(dir, "room_data.tmp");
+        File.WriteAllText(tmpPath, json);
+        if (File.Exists(finalPath)) File.Delete(finalPath);
+        File.Move(tmpPath, finalPath);
 
-        debugText?.SetText($"Archivo exportado:\n{path}");
-        Debug.Log("JSON generado en: " + path);
-
-        return path;
+        debugText?.SetText($"Archivo exportado:\n{finalPath}");
+        Debug.Log("JSON generado en: " + finalPath);
+        return finalPath;
     }
 
     private string CalcularDireccion(Vector2 from, Vector2 to)
