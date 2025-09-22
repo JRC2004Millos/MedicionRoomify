@@ -1,9 +1,8 @@
 using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 using System;
 using Niantic.Lightship.AR.ObjectDetection;
-using System.IO; // ✅ Necesario para JSON
+using System.IO;
 
 [System.Serializable]
 public class DetectedObjectData
@@ -19,115 +18,132 @@ public class ObjectDetectionSample : MonoBehaviour
     [SerializeField] private float _probabilityThreshold = .5f;
     [SerializeField] private ARObjectDetectionManager _objectDetectionManager;
 
-    private Color[] _colors = new Color[]
-    {
-        Color.red,
-        Color.blue,
-        Color.green,
-        Color.yellow,
-        Color.magenta,
-        Color.cyan,
-        Color.white,
-        Color.black,
-    };
-
-    [SerializeField] private DrawRect _drawRect;
-    private Canvas _canvas;
     private List<DetectedObjectData> _detectedObjectsList = new List<DetectedObjectData>();
     private string _jsonFilePath;
 
     private void Awake()
     {
-        _canvas = FindObjectOfType<Canvas>();
         _jsonFilePath = Path.Combine(Application.persistentDataPath, "detected_objects.json");
         Debug.Log($"📁 JSON se guardará en: {_jsonFilePath}");
     }
 
     private void Start()
     {
+        if (_objectDetectionManager == null)
+        {
+            Debug.LogError("❌ ARObjectDetectionManager no está asignado");
+            return;
+        }
+        
         _objectDetectionManager.enabled = true;
         _objectDetectionManager.MetadataInitialized += ObjectDetectionManagerOnMetadataInitialized;
     }
 
     private void ObjectDetectionManagerOnMetadataInitialized(ARObjectDetectionModelEventArgs obj)
     {
-        _objectDetectionManager.ObjectDetectionsUpdated += ObjectDetectionManagerOnObjectDetectionsUpdated;
+        if (_objectDetectionManager != null)
+        {
+            _objectDetectionManager.ObjectDetectionsUpdated += ObjectDetectionManagerOnObjectDetectionsUpdated;
+        }
     }
 
     private void OnDestroy()
     {
-        _objectDetectionManager.MetadataInitialized -= ObjectDetectionManagerOnMetadataInitialized;
-        _objectDetectionManager.ObjectDetectionsUpdated -= ObjectDetectionManagerOnObjectDetectionsUpdated;
-        SaveDetectionsToJson(); // ✅ Guardar al cerrar
+        if (_objectDetectionManager != null)
+        {
+            _objectDetectionManager.MetadataInitialized -= ObjectDetectionManagerOnMetadataInitialized;
+            _objectDetectionManager.ObjectDetectionsUpdated -= ObjectDetectionManagerOnObjectDetectionsUpdated;
+        }
+        SaveDetectionsToJson();
     }
 
     private void ObjectDetectionManagerOnObjectDetectionsUpdated(ARObjectDetectionsUpdatedEventArgs obj)
     {
-        string resultString = "";
-        float _confidence = 0;
-        string _name = "";
         var results = obj.Results;
 
+        // ✅ VERIFICAR RESULTADOS
         if (results == null)
         {
+            Debug.Log("📋 No hay resultados de detección");
             return;
         }
 
-        _drawRect.ClearRects();
-        _detectedObjectsList.Clear(); // ✅ Limpiar lista anterior
+        _detectedObjectsList.Clear();
 
         for (int i = 0; i < results.Count; i++)
         {
             var detection = results[i];
+            
+            // ✅ VERIFICAR DETECCIÓN INDIVIDUAL
+            if (detection == null)
+            {
+                Debug.LogWarning($"⚠️ Detección {i} es null");
+                continue;
+            }
+
             var categorizations = detection.GetConfidentCategorizations(_probabilityThreshold);
 
-            if (categorizations.Count <= 0)
+            if (categorizations == null || categorizations.Count <= 0)
             {
-                continue; // ✅ Cambié break por continue
+                continue;
             }
 
             categorizations.Sort((a, b) => b.Confidence.CompareTo(a.Confidence));
             var categoryToDisplay = categorizations[0];
-            _confidence = categoryToDisplay.Confidence;
-            _name = categoryToDisplay.CategoryName;
 
-            int h = Mathf.FloorToInt(_canvas.GetComponent<RectTransform>().rect.height);
-            int w = Mathf.FloorToInt(_canvas.GetComponent<RectTransform>().rect.width);
+            float confidence = categoryToDisplay.Confidence;
+            string categoryName = categoryToDisplay.CategoryName ?? "Unknown";
 
-            var _rect = results[i].CalculateRect(w, h, Screen.orientation);
-
-            resultString = $"{_name}: {_confidence:F2}\n";
-
-            _drawRect.CreateRect(_rect, _colors[i % _colors.Length], resultString);
+            // ✅ OBTENER POSICIÓN (usando center del boundingBox si está disponible)
+            Vector2 position = Vector2.zero;
+            try
+            {
+                // Intentar obtener la posición del centro del objeto detectado
+                var boundingBox = detection.CalculateRect(Screen.width, Screen.height, Screen.orientation);
+                position = new Vector2(boundingBox.center.x, boundingBox.center.y);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"⚠️ No se pudo calcular posición: {e.Message}");
+            }
 
             // ✅ AGREGAR DATOS AL JSON
             DetectedObjectData newDetection = new DetectedObjectData
             {
-                categoryName = _name,
-                confidence = _confidence,
+                categoryName = categoryName,
+                confidence = confidence,
                 timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                position = new Vector2(_rect.x, _rect.y)
+                position = position
             };
             _detectedObjectsList.Add(newDetection);
+
+            Debug.Log($"🎯 Detectado: {categoryName} ({confidence:F2}) en posición {position}");
         }
 
         // ✅ GUARDAR JSON después de procesar todas las detecciones
         SaveDetectionsToJson();
     }
 
-    // ✅ MÉTODO PARA GUARDAR JSON
+    // ✅ MÉTODO PARA GUARDAR JSON CON MANEJO DE ERRORES
     private void SaveDetectionsToJson()
     {
-        if (_detectedObjectsList.Count == 0)
+        if (_detectedObjectsList == null || _detectedObjectsList.Count == 0)
             return;
 
-        // Convertir a JSON
-        string jsonData = JsonUtility.ToJson(new DetectionWrapper { detections = _detectedObjectsList }, true);
-        
-        // Guardar archivo
-        File.WriteAllText(_jsonFilePath, jsonData);
-        
-        Debug.Log($"💾 JSON guardado: {_detectedObjectsList.Count} objetos en {_jsonFilePath}");
+        try
+        {
+            // Convertir a JSON
+            string jsonData = JsonUtility.ToJson(new DetectionWrapper { detections = _detectedObjectsList }, true);
+            
+            // Guardar archivo
+            File.WriteAllText(_jsonFilePath, jsonData);
+            
+            Debug.Log($"💾 JSON guardado: {_detectedObjectsList.Count} objetos en {_jsonFilePath}");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"❌ Error guardando JSON: {e.Message}");
+        }
     }
 
     // ✅ Clase wrapper para la lista
@@ -137,15 +153,26 @@ public class ObjectDetectionSample : MonoBehaviour
         public List<DetectedObjectData> detections;
     }
 
-    // ✅ Método para leer el JSON desde otros scripts
+    // ✅ Método para leer el JSON desde otros scripts CON MANEJO DE ERRORES
     public List<DetectedObjectData> GetDetectedObjects()
     {
-        if (File.Exists(_jsonFilePath))
+        try
         {
-            string json = File.ReadAllText(_jsonFilePath);
-            DetectionWrapper wrapper = JsonUtility.FromJson<DetectionWrapper>(json);
-            return wrapper.detections;
+            if (File.Exists(_jsonFilePath))
+            {
+                string json = File.ReadAllText(_jsonFilePath);
+                if (!string.IsNullOrEmpty(json))
+                {
+                    DetectionWrapper wrapper = JsonUtility.FromJson<DetectionWrapper>(json);
+                    return wrapper?.detections ?? new List<DetectedObjectData>();
+                }
+            }
         }
+        catch (Exception e)
+        {
+            Debug.LogError($"❌ Error leyendo JSON: {e.Message}");
+        }
+        
         return new List<DetectedObjectData>();
     }
 }
