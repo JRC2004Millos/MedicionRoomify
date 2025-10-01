@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-
 [System.Serializable]
 public class RoomDimensions
 {
@@ -23,13 +22,17 @@ public class Wall
 public class Corner
 {
     public string id;
-    public Vector2 position; // Solo X y Z (en plano piso)
+    public Vector2 position; // (x,y) en plano del piso
 
     public Corner(string id, Vector3 worldPosition)
     {
         this.id = id;
+        // toma X,Z del mundo y los lleva al plano 2D (x,y)
         this.position = new Vector2(worldPosition.x, worldPosition.z);
     }
+
+    // ctor vacío para JsonUtility
+    public Corner() { }
 }
 
 [System.Serializable]
