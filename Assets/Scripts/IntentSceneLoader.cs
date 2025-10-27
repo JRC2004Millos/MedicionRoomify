@@ -1,54 +1,62 @@
+#if UNITY_ANDROID && !UNITY_EDITOR
+using UnityEngine.Android;
+#endif
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using System.Collections;
+using System.IO;
 
 public class IntentSceneLoader : MonoBehaviour
 {
-    [SerializeField] string defaultScene = "RenderScene";
-    bool _routed = false;
+    const string EXTRA_SCENE = "SCENE_TO_LOAD";
+    const string EXTRA_PBR = "PBR_PACKS_ROOT";
+
+    static string sceneToLoad;
+    static string texturesJsonPath;
+    static string pbrPacksRoot;
 
     void Awake()
     {
-        DontDestroyOnLoad(gameObject);
-        TryRouteOnce();
+        ReadExtras(true);
+        Route(sceneToLoad);
     }
 
-    void OnApplicationFocus(bool hasFocus)  { TryRouteOnce(); }
-    void OnApplicationPause(bool paused)    { if (!paused) TryRouteOnce(); }
-
-    void TryRouteOnce()
+    void OnApplicationFocus(bool hasFocus)
     {
-        if (_routed) return;
-
-        string sceneFromIntent = null;
-#if UNITY_ANDROID && !UNITY_EDITOR
-        try
+        if (hasFocus)
         {
-            using (var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
-            using (var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
-            using (var intent = activity.Call<AndroidJavaObject>("getIntent"))
-            {
-                sceneFromIntent = intent.Call<string>("getStringExtra", "SCENE_TO_LOAD");
-
-                // Limpia el extra para evitar handoff repetidos cuando vuelva foco/pausa
-                if (sceneFromIntent != null)
-                    intent.Call<AndroidJavaObject>("removeExtra", "SCENE_TO_LOAD");
-            }
+            ReadExtras(false);
+            Route(sceneToLoad);
         }
-        catch { /* ignora, usa default */ }
-#endif
-        var target = string.IsNullOrEmpty(sceneFromIntent) ? defaultScene : sceneFromIntent;
-        StartCoroutine(Go(target));
-        _routed = true;
     }
 
-    IEnumerator Go(string sceneName)
+    void OnApplicationPause(bool paused)
     {
-        // opcional: pantalla de transición aquí
-        var async = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
-        while (!async.isDone) yield return null;
+        if (!paused)
+        {
+            ReadExtras(false);
+            Route(sceneToLoad);
+        }
+    }
 
-        // Bootstrap ya no es necesario
-        Destroy(gameObject);
+    void ReadExtras(bool logHeader)
+    {
+        #if UNITY_ANDROID && !UNITY_EDITOR
+                var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+                var activity    = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+                var intent      = activity.Call<AndroidJavaObject>("getIntent");
+                sceneToLoad     = intent.Call<string>("getStringExtra", EXTRA_SCENE) ?? sceneToLoad;
+                pbrPacksRoot    = intent.Call<string>("getStringExtra", EXTRA_PBR)   ?? pbrPacksRoot;
+        #endif
+                if (logHeader) Debug.Log($"[Bootstrap] SCENE_TO_LOAD='{sceneToLoad}'");
+                Debug.Log($"[Bridge] TEXTURES_JSON_PATH={texturesJsonPath}");
+                Debug.Log($"[Bridge] PBR_PACKS_ROOT={pbrPacksRoot}");
+    }
+
+    public static string GetTexturesJsonPath() => texturesJsonPath;
+    public static string GetPbrPacksRoot()     => pbrPacksRoot;
+
+    void Route(string scene)
+    {
+        if (string.IsNullOrEmpty(scene)) return;
+        StartCoroutine(SceneHandoff.Go(scene));
     }
 }

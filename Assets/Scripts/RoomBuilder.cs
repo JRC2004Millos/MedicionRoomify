@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 
+[DefaultExecutionOrder(0)]
 public class RoomBuilder : MonoBehaviour
 {
     [Header("Editor only (pruebas)")]
@@ -83,6 +84,12 @@ public class RoomBuilder : MonoBehaviour
         // 4) Ajustar cámara (simple)
         FrameCameraToBounds(floorVerts2D);
         Debug.Log("[RoomBuilder] Renderización básica completada.");
+
+        var textures = FindFirstObjectByType<RoomTextures>();
+        if (textures != null)
+            textures.ApplyToSceneNow();
+        else
+            Debug.LogWarning("[RoomBuilder] No se encontró RoomTextures en la escena.");
     }
 
     string GetJsonPath()
