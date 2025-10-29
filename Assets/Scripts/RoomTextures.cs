@@ -1,4 +1,3 @@
-// RoomTextures.cs
 using System;
 using System.IO;
 using System.Collections.Generic;
@@ -11,7 +10,6 @@ public class TextureEntry
     public string id;
     public string albedo;
     public string normal;
-    public string metallic;
     public string roughness;
     public float tilingX = 1f;
     public float tilingY = 1f;
@@ -20,319 +18,347 @@ public class TextureEntry
 [Serializable]
 public class TextureCatalog
 {
-    public List<TextureEntry> textures = new List<TextureEntry>();
+    public List<TextureEntry> textures = new();
 }
 
 [DefaultExecutionOrder(-50)]
 public class RoomTextures : MonoBehaviour
 {
-    [Header("Opcional: material de prueba")]
-    public Material previewTarget;
+    public enum SurfaceKind { Floor, Wall, Ceiling }
 
-    [Header("Estado")]
-    [SerializeField] private string resolvedJsonPath = "";
-
-    private readonly Dictionary<string, Material> _cache = new(StringComparer.OrdinalIgnoreCase);
     private TextureCatalog _catalog;
-
+    private readonly Dictionary<string, Material> _matCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<PendingAssign> _pending = new();
     private static readonly string[] EXT = { ".png", ".jpg", ".jpeg", ".tga", ".webp" };
 
-    private readonly Dictionary<string, Material> _matCache = new(StringComparer.OrdinalIgnoreCase);
+    int _loadedSinceLastFlush = 0;
 
-    private void Awake()
+    private struct PendingAssign
     {
-        var baseDir = Application.persistentDataPath;
-        var pathA = Path.Combine(baseDir, "textures_model.json");
-        var pathB = Path.Combine(baseDir, "textures_model");
-        var room = Path.Combine(baseDir, "room_data.json");
-
-        Debug.Log($"[RoomTextures v2] pDir={baseDir}");
-        Debug.Log($"[RoomTextures v2] exists(textures_model.json)={File.Exists(pathA)} size={(File.Exists(pathA) ? new FileInfo(pathA).Length : 0)}");
-        Debug.Log($"[RoomTextures v2] exists(textures_model)={File.Exists(pathB)} size={(File.Exists(pathB) ? new FileInfo(pathB).Length : 0)}");
-        Debug.Log($"[RoomTextures v2] exists(room_data.json)={File.Exists(room)} size={(File.Exists(room) ? new FileInfo(room).Length : 0)}");
-
-        if (File.Exists(pathA)) { resolvedJsonPath = pathA; return; }
-        if (File.Exists(pathB)) { resolvedJsonPath = pathB; return; }
-        resolvedJsonPath = room;
+        public MeshRenderer mr;
+        public SurfaceKind kind;
+        public Vector3 forward;
+        public Material fallback;
     }
 
-    private void Start() => StartCoroutine(LoadCatalogAndWarmup());
-
-    private System.Collections.IEnumerator LoadCatalogAndWarmup()
+    void Start()
     {
-        if (!File.Exists(resolvedJsonPath))
+        string path = Path.Combine(Application.persistentDataPath, "textures_model.json");
+        if (!File.Exists(path))
         {
-            Debug.LogWarning($"[RoomTextures] No se encontró el JSON de texturas en: {resolvedJsonPath}");
-            yield break;
+            Debug.LogWarning($"[RoomTextures] No se encontró textures_model.json en {path}");
+            return;
         }
-
         try
         {
-            string json = File.ReadAllText(resolvedJsonPath);
+            string json = File.ReadAllText(path);
             _catalog = ParseCatalog(json);
         }
         catch (Exception e)
         {
             Debug.LogError($"[RoomTextures] Error parseando JSON: {e}");
-            yield break;
+            return;
         }
 
-        if (_catalog == null || _catalog.textures == null || _catalog.textures.Count == 0)
+        if (_catalog == null || _catalog.textures.Count == 0)
         {
-            Debug.LogWarning("[RoomTextures] Catálogo vacío (estructura no compatible o archivos PBR no encontrados).");
-            yield break;
+            Debug.LogWarning("[RoomTextures] Catálogo vacío.");
+            return;
         }
 
         Debug.Log($"[RoomTextures] Catálogo listo. Entradas: {_catalog.textures.Count}");
-        ApplyPreview(_catalog.textures[0]);
+        FlushPending();
     }
 
-    // ----------------------------------------------------------------------
+    // =======================
+    // API usada por RoomBuilder
+    // =======================
+    public void ApplyOrQueueRenderer(MeshRenderer mr, SurfaceKind kind, Vector3 forward, Material fallback)
+    {
+        if (mr == null) return;
+
+        if (_catalog != null && _catalog.textures.Count > 0)
+        {
+            if (!TryApplyNow(mr, kind, forward))
+            {
+                if (fallback != null) mr.material = fallback;
+            }
+        }
+        else
+        {
+            _pending.Add(new PendingAssign { mr = mr, kind = kind, forward = forward, fallback = fallback });
+        }
+    }
+
+    private bool TryApplyNow(MeshRenderer mr, SurfaceKind kind, Vector3 forward)
+    {
+        TextureEntry entry = null;
+
+        if (kind == SurfaceKind.Floor)
+            entry = GetEntryByPrefix("FLOOR");
+        else if (kind == SurfaceKind.Ceiling)
+            entry = GetEntryByPrefix("CEILING");
+        else
+        {
+            string card = ComputeCardinal(forward);
+            entry = GetEntryByPrefix($"WALL_{card}") ?? GetEntryByPrefix("WALL_");
+        }
+
+        if (entry == null)
+        {
+            Debug.Log($"[RoomTextures] (sin pack) {kind} en {mr.gameObject.name}");
+            return false;
+        }
+
+        var mat = BuildMaterial(entry);
+        if (mat == null) return false;
+
+        mr.material = mat;
+        Debug.Log($"[RoomTextures] ✅ Aplicado {mat.name} a {mr.gameObject.name}");
+        return true;
+    }
+    
+    private void FlushPending()
+    {
+        if (_pending.Count == 0) return;
+        int ok = 0, fb = 0;
+        foreach (var p in _pending)
+        {
+            if (!TryApplyNow(p.mr, p.kind, p.forward))
+            {
+                if (p.fallback != null)
+                {
+                    p.mr.material = p.fallback;
+                    fb++;
+                }
+            }
+            else ok++;
+        }
+        _pending.Clear();
+        Debug.Log($"[RoomTextures] Pendientes aplicados -> ok={ok}, fallback={fb}");
+    }
+
+    // =======================
+    // Helpers
+    // =======================
 
     [Serializable] class TextureAssignmentItem { public string wall; public string pack; public string path; }
-    [Serializable] class TextureAssignmentModel { public string project; public List<TextureAssignmentItem> items; }
+    [Serializable] class TextureAssignmentModel { public List<TextureAssignmentItem> items; }
 
     private TextureCatalog ParseCatalog(string json)
     {
-        // 1) Intento estándar {"textures":[...]}
-        var cat = JsonUtility.FromJson<TextureCatalog>(json);
-        if (cat != null && cat.textures != null && cat.textures.Count > 0) return cat;
-
-        // 2) Formato de Roomify {"project":"Roomify","items":[...]}
         var model = JsonUtility.FromJson<TextureAssignmentModel>(json);
-        if (model?.items != null && model.items.Count > 0)
-        {
-            var list = new List<TextureEntry>(model.items.Count);
+        if (model?.items == null || model.items.Count == 0) return null;
 
-            foreach (var it in model.items)
+        var list = new List<TextureEntry>();
+        foreach (var it in model.items)
+        {
+            var dir = NormalizePbrDir(it.path);
+            if (string.IsNullOrEmpty(dir)) continue;
+
+            var albedo = FindMap(dir, new[] { "color", "albedo", "basecolor", "_col" });
+            var normal = FindMap(dir, new[] { "normalgl", "normaldx" });
+            var rough = FindMap(dir, new[] { "roughness", "rough" });
+            if (albedo == null) continue;
+
+            list.Add(new TextureEntry
             {
-                if (string.IsNullOrEmpty(it?.path) || !Directory.Exists(it.path))
-                {
-                    Debug.LogWarning($"[RoomTextures] Carpeta PBR inexistente: {it?.path}");
-                    continue;
-                }
-
-                var albedoPath = FindMap(it.path, new[] { "color", "albedo", "basecolor", "base_color" });
-                var normalGL = FindMap(it.path, new[] { "normalgl" });
-                var normalDX = normalGL == null ? FindMap(it.path, new[] { "normaldx", "normal_dx" }) : null;
-                bool normalIsDX = normalGL == null && normalDX != null;
-                var normalPath = normalGL ?? normalDX;
-                var roughPath = FindMap(it.path, new[] { "roughness", "rough" });
-
-                if (albedoPath == null)
-                {
-                    DumpDir(it.path, $"Contenido pack sin albedo ({it.pack})");
-                    Debug.LogWarning($"[RoomTextures] Sin albedo en pack: {it.path}");
-                    continue;
-                }
-
-                list.Add(new TextureEntry
-                {
-                    id = MakeId(it.wall, it.pack),
-                    albedo = albedoPath,
-                    normal = normalPath,
-                    metallic = null,
-                    roughness = roughPath,
-                    tilingX = 1f,
-                    tilingY = 1f
-                });
-            }
-
-            return new TextureCatalog { textures = list };
+                id = MakeId(it.wall, it.pack),
+                albedo = albedo,
+                normal = normal,
+                roughness = rough
+            });
         }
-
-        // 3) Si la raíz es array, envolver
-        var t = json.TrimStart();
-        if (t.StartsWith("["))
-        {
-            var wrapped = "{\"textures\":" + json + "}";
-            var cat2 = JsonUtility.FromJson<TextureCatalog>(wrapped);
-            if (cat2?.textures != null && cat2.textures.Count > 0) return cat2;
-        }
-
-        return null;
+        return new TextureCatalog { textures = list };
     }
 
-    private static string MakeId(string wall, string pack)
+    private string FindMap(string dir, string[] keys)
     {
-        if (string.IsNullOrEmpty(wall)) wall = "Unknown";
-        string id;
-        var lower = wall.ToLowerInvariant();
-        if (lower.Contains("piso")) id = "FLOOR";
-        else if (lower.Contains("techo")) id = "CEILING";
-        else if (lower.Contains("(east)")) id = "WALL_east";
-        else if (lower.Contains("(west)")) id = "WALL_west";
-        else if (lower.Contains("(north)")) id = "WALL_north";
-        else if (lower.Contains("(south)")) id = "WALL_south";
-        else id = wall.Replace(" ", "_");
-        if (!string.IsNullOrEmpty(pack)) id += $"__{pack}";
-        return id;
-    }
-
-    private string FindMap(string dir, string[] keywordsAny)
-    {
+        if (!Directory.Exists(dir)) return null;
         foreach (var f in Directory.GetFiles(dir))
         {
             var name = Path.GetFileName(f).ToLowerInvariant();
             var ext = Path.GetExtension(name);
-            if (Array.IndexOf(EXT, ext) < 0) continue;
-            foreach (var kw in keywordsAny)
-                if (name.Contains(kw)) return f;
+            if (!EXT.Contains(ext)) continue;
+            if (keys.Any(k => name.Contains(k))) return f;
         }
         return null;
     }
 
-    private void DumpDir(string path, string label)
+    private string MakeId(string wall, string pack)
     {
+        if (string.IsNullOrEmpty(wall)) wall = "Unknown";
+        var lower = wall.ToLowerInvariant();
+        string id = lower.Contains("piso") ? "FLOOR"
+                 : lower.Contains("techo") ? "CEILING"
+                 : lower.Contains("east") ? "WALL_east"
+                 : lower.Contains("west") ? "WALL_west"
+                 : lower.Contains("north") ? "WALL_north"
+                 : lower.Contains("south") ? "WALL_south" : "WALL_";
+        if (!string.IsNullOrEmpty(pack)) id += $"__{pack}";
+        return id;
+    }
+
+    private string NormalizePbrDir(string jsonDir)
+    {
+        if (string.IsNullOrEmpty(jsonDir)) return null;
+        if (Directory.Exists(jsonDir)) return jsonDir;
+
         try
         {
-            if (!Directory.Exists(path))
+            var basePath = Application.persistentDataPath;
+            var idx = jsonDir.IndexOf("/files", StringComparison.OrdinalIgnoreCase);
+            if (idx >= 0)
             {
-                Debug.LogWarning($"[RoomTextures] {label}: dir no existe -> {path}");
-                return;
+                var after = jsonDir.Substring(idx + "/files".Length).TrimStart('/');
+                var candidate = Path.Combine(basePath, after).Replace("\\", "/");
+                if (Directory.Exists(candidate)) return candidate;
             }
-            var files = Directory.GetFiles(path);
-            Debug.Log($"[RoomTextures] {label}: {path} ({files.Length} archivos)");
-            foreach (var f in files)
-                Debug.Log($"[RoomTextures]   - {Path.GetFileName(f)}");
+            var pack = Path.GetFileName(jsonDir.TrimEnd('/', '\\'));
+            var pbr = Path.Combine(basePath, "pbrpacks", pack);
+            if (Directory.Exists(pbr)) return pbr;
         }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"[RoomTextures] DumpDir error {label}: {e.Message}");
-        }
+        catch { }
+        return null;
     }
 
-    private void ApplyPreview(TextureEntry e)
+    private string ComputeCardinal(Vector3 fwd)
     {
-        if (previewTarget == null || e == null) return;
-
-        var albedo = LoadTexSRGB(e.albedo);
-        if (albedo) previewTarget.SetTexture("_BaseMap", albedo);
-
-        // Normal: si viene NormalDX, invertimos el canal G para OpenGL
-        var normal = LoadTexLinear(e.normal);
-        if (normal)
-        {
-            if (e.normal != null && e.normal.ToLowerInvariant().Contains("normaldx"))
-                InvertGreen(normal);
-            normal.Apply(true, false);
-            previewTarget.EnableKeyword("_NORMALMAP");
-            previewTarget.SetTexture("_BumpMap", normal);
-        }
-
-        // Roughness simple (opcional): como URP usa Smoothness, ponemos un valor medio
-        previewTarget.SetFloat("_Smoothness", 0.6f);
+        var v = new Vector2(fwd.x, fwd.z).normalized;
+        if (Mathf.Abs(v.x) >= Mathf.Abs(v.y))
+            return v.x >= 0 ? "east" : "west";
+        else
+            return v.y >= 0 ? "north" : "south";
     }
 
-    private Texture2D LoadTexSRGB(string path) => string.IsNullOrEmpty(path) ? null : LoadTex(path, true);
-    private Texture2D LoadTexLinear(string path) => string.IsNullOrEmpty(path) ? null : LoadTex(path, false);
-
-    // Carga genérica desde disco
-    private Texture2D LoadTex(string path, bool sRGB)
+    private TextureEntry GetEntryByPrefix(string prefix)
     {
-        try
-        {
-            var data = File.ReadAllBytes(path);
-            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, true, !sRGB);
-            tex.LoadImage(data, false);
-            tex.Apply(true, false);
-            return tex;
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning($"[RoomTextures] No se pudo cargar {path}: {ex.Message}");
-            return null;
-        }
-    }
-
-    private void InvertGreen(Texture2D tex)
-    {
-        var pixels = tex.GetPixels32();
-        for (int i = 0; i < pixels.Length; i++)
-        {
-            var c = pixels[i];
-            c.g = (byte)(255 - c.g);
-            pixels[i] = c;
-        }
-        tex.SetPixels32(pixels);
+        if (_catalog == null) return null;
+        return _catalog.textures.FirstOrDefault(t => t.id.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
     }
 
     private Material BuildMaterial(TextureEntry e)
     {
-        if (e == null) return null;
         if (_matCache.TryGetValue(e.id, out var cached)) return cached;
 
         var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        mat.name = e.id;
 
-        var albedo = LoadTexSRGB(e.albedo);
-        if (albedo) mat.SetTexture("_BaseMap", albedo);
-
-        var normal = LoadTexLinear(e.normal);
-        if (normal)
+        var albedo = LoadTex(e.albedo, true);
+        if (albedo)
         {
-            if (e.normal != null && e.normal.ToLowerInvariant().Contains("normaldx"))
-                InvertGreen(normal);
-            normal.Apply(true, false);
-            mat.EnableKeyword("_NORMALMAP");
-            mat.SetTexture("_BumpMap", normal);
+            mat.SetTexture("_BaseMap", albedo);
+            mat.SetColor("_BaseColor", Color.white);
+            mat.SetTextureScale("_BaseMap", new Vector2(e.tilingX, e.tilingY));
         }
 
-        // Roughness simple -> Smoothness intermedio (URP usa Smoothness)
-        mat.SetFloat("_Smoothness", 0.6f);
+        var normal = LoadTex(e.normal, false);
+        if (normal)
+        {
+            mat.EnableKeyword("_NORMALMAP");
+            mat.SetTexture("_BumpMap", normal);
+            mat.SetFloat("_BumpScale", 1f);
+            mat.SetTextureScale("_BumpMap", new Vector2(e.tilingX, e.tilingY));
+        }
+
+        mat.SetFloat("_Metallic", 0.0f);
+        mat.SetFloat("_Smoothness", 0.35f);
 
         _matCache[e.id] = mat;
         return mat;
     }
 
-    public void ApplyToSceneNow() => StartCoroutine(ApplyAfterBuild());
+    const int MAX_TEX_SIZE = 4096;
+    const int FLUSH_EVERY  = 8;
 
-    private System.Collections.IEnumerator ApplyAfterBuild()
+    private Texture2D LoadTex(string path, bool sRGB)
     {
-        // Espera a que RoomBuilder cree objetos
-        for (int i = 0; i < 60; i++) // ~1s a 60 FPS
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
+
+        try
         {
-            if (GameObject.Find("Floor") != null) break;
-            yield return null;
+            var data = File.ReadAllBytes(path);
+
+            // 1) Cargar readable
+            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, /*mips*/ true, /*linear*/ !sRGB);
+            if (!ImageConversion.LoadImage(tex, data, markNonReadable: false))
+                throw new Exception("LoadImage devolvió false");
+
+            tex.name = Path.GetFileName(path);
+            int w0 = tex.width, h0 = tex.height;
+
+            // 2) Downscale si hace falta (sigue readable dentro de esta función)
+            tex = DownscaleIfNeeded(tex, MAX_TEX_SIZE, sRGB);
+
+            // 3) Ajustes de muestreo
+            tex.wrapMode = TextureWrapMode.Repeat;
+            tex.filterMode = FilterMode.Trilinear;
+            tex.anisoLevel = 4;
+
+            // 4) Generar mips y marcar no-readable recién al final
+            tex.Apply(updateMipmaps: true, makeNoLongerReadable: true);
+
+            Debug.Log($"[RoomTextures] tex OK {tex.name} {w0}x{h0} -> {tex.width}x{tex.height}");
+            MaybeFlush();
+            return tex;
         }
-
-        if (_catalog == null || _catalog.textures == null || _catalog.textures.Count == 0)
-            yield break;
-
-        // 1) Piso
-        var floorEntry = _catalog.textures
-            .FirstOrDefault(t => t.id != null && t.id.ToUpperInvariant().Contains("FLOOR"));
-        var floorGo = GameObject.Find("Floor");
-        if (floorGo && floorEntry != null)
+        catch (Exception e)
         {
-            var mr = floorGo.GetComponent<MeshRenderer>();
-            var m = BuildMaterial(floorEntry);
-            if (mr && m) mr.material = m;
+            Debug.LogWarning($"[RoomTextures] fallo LoadTex {Path.GetFileName(path)}: {e.Message}");
+            return null;
         }
+    }
 
-        // 2) Muros (si tienes IDs tipo WALL_north/east/etc, intenta emparejar;
-        // si no, usa el primer WALL_* para todos como fallback)
-        var wallEntries = _catalog.textures
-            .Where(t => t.id != null && t.id.ToUpperInvariant().Contains("WALL"))
-            .ToList();
+    static Texture2D DownscaleIfNeeded(Texture2D src, int maxSize, bool sRGB)
+    {
+        if (src == null) return null;
+        int w = src.width, h = src.height;
+        if (w <= maxSize && h <= maxSize) return src;
 
-        var defaultWall = wallEntries.FirstOrDefault();
+        float k = (float)maxSize / Mathf.Max(w, h);
+        int nw = Mathf.Max(2, Mathf.RoundToInt(w * k));
+        int nh = Mathf.Max(2, Mathf.RoundToInt(h * k));
 
-        foreach (var wall in GameObject.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        // rt con mips para que Unity genere pirámide al downscale
+        var rt = new RenderTexture(nw, nh, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear)
         {
-            if (!wall.name.StartsWith("Wall_")) continue;
+            useMipMap = true,
+            autoGenerateMips = true
+        };
 
-            // Heurística por nombre si tu JSON codifica orientación:
-            TextureEntry chosen = defaultWall;
+        // Guardar el RT activo
+        var prev = RenderTexture.active;
+        try
+        {
+            Graphics.Blit(src, rt);
+            RenderTexture.active = rt;
 
-            // (opcional) Si decides nombrar muros con sufijos, puedes intentar:
-            // if (wall.name.Contains("(north)", StringComparison.OrdinalIgnoreCase))
-            //     chosen = wallEntries.FirstOrDefault(t => t.id.Contains("WALL_north", StringComparison.OrdinalIgnoreCase)) ?? defaultWall;
+            var dst = new Texture2D(nw, nh, TextureFormat.RGBA32, /*mips*/ true, /*linear*/ !sRGB);
+            dst.ReadPixels(new Rect(0, 0, nw, nh), 0, 0);
+            // OJO: acá aún NO la marcamos no-readable; eso se hace en LoadTex -> Apply(..., true)
+            dst.Apply(updateMipmaps: true, makeNoLongerReadable: false);
 
-            if (chosen != null)
-            {
-                var m = BuildMaterial(chosen);
-                if (m) wall.material = m;
-            }
+            UnityEngine.Object.Destroy(src); // descarta la grande
+            return dst;
+        }
+        finally
+        {
+            // Restaurar SIEMPRE y limpiar sin dejar el RT activo
+            RenderTexture.active = prev != null ? prev : null;
+            if (RenderTexture.active == rt) RenderTexture.active = null;
+            rt.Release();
+            UnityEngine.Object.Destroy(rt);
+        }
+    }
+
+    void MaybeFlush()
+    {
+        _loadedSinceLastFlush++;
+        if (_loadedSinceLastFlush >= FLUSH_EVERY)
+        {
+            _loadedSinceLastFlush = 0;
+            Resources.UnloadUnusedAssets();
+            GC.Collect();
         }
     }
 }

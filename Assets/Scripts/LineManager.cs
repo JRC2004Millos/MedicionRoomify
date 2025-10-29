@@ -11,6 +11,7 @@ public class LineManager : MonoBehaviour
     public TextMeshProUGUI debugText;
     public TextMeshProUGUI TxtEstado;
     public TextMeshPro mText; // prefab TMP (WorldSpace)
+    private bool _exportando = false;
 
     public InstructionHUD hud;
 
@@ -155,69 +156,125 @@ public class LineManager : MonoBehaviour
                 return;
             }
 
-            // Confirmar altura y pasar a piso
             modoActual = ModoMedicion.Piso;
             TxtEstado?.SetText("Paso 2: Mide las esquinas del piso. Agrega al menos 3 puntos y confirma.");
             debugText?.SetText($"Altura confirmada: {(alturaMedida * 100f):F1} cm");
             hud?.SetModePiso();
 
-            // limpiar visuales de altura para empezar piso limpio
             ClearVisualsSinceConfirm();
             puntosAltura.Clear();
-
-            // snapshot para “eliminar”
             SnapshotAtConfirm();
             return;
         }
 
+        // ----- Piso -----
         if (modoActual == ModoMedicion.Piso)
         {
+            if (_exportando) return;              // debouncer
             if (placedPositions.Count < 3)
             {
                 TxtEstado?.SetText("Debes tener al menos 3 puntos para cerrar el cuarto.");
                 return;
             }
 
-            // Cerrar visualmente
-            CerrarFiguraVisual();
+            _exportando = true;                   // <-- aquí sí
 
+            CerrarFiguraVisual();
             TxtEstado?.SetText("Figura cerrada. Generando JSON...");
+
             string path = ExportarJSON();
             hud?.ShowExportResult(path);
+
+            // Lanza regreso a Android y luego cierra Unity (evita crash al abrir 3D)
             AndroidNav.GoToCapture(path);
+            PlayerPrefs.SetString("SCENE_TO_LOAD", "RenderScene");
+            PlayerPrefs.SetInt("ForceBootstrap", 1);
+            PlayerPrefs.Save();
+            TxtEstado?.SetText("JSON generado. Cerrando Unity...");
 
-            TxtEstado?.SetText("JSON generado. Si quieres, puedes empezar otra medición.");
-
-            // snapshot después de confirmar piso (por si el flujo continúa)
             SnapshotAtConfirm();
         }
     }
 
+    // AndroidNav.cs (reemplaza GoToCapture)
     public static class AndroidNav
     {
-        public static void GoToCapture(string jsonAbsolutePath)
+        public static void GoToCapture(string jsonPath)
         {
     #if UNITY_ANDROID && !UNITY_EDITOR
             try
             {
                 using (var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
-                using (var currentActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
-                using (var navBridge = new AndroidJavaClass("com.example.roomify.NavigationBridge"))
                 {
-                    navBridge.CallStatic("openCaptureAndFinish", currentActivity, jsonAbsolutePath);
+                    var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+                    if (activity == null)
+                    {
+                        Debug.LogError("[AndroidNav] currentActivity es null. Fallback a ApplicationContext (no recomendado).");
+                        LaunchWithAppContext(jsonPath);
+                        return;
+                    }
+
+                    activity.Call("runOnUiThread", new AndroidJavaRunnable(() =>
+                    {
+                        try
+                        {
+                            using (var intent = new AndroidJavaObject("android/content/Intent",
+                                activity, new AndroidJavaClass("com.example.roomify.CaptureActivity")))
+                            {
+                                intent.Call<AndroidJavaObject>("putExtra", "ROOM_JSON_PATH", jsonPath);
+
+                                // ⚠️ SIN NEW_TASK, SIN CLEAR_TOP
+                                activity.Call("startActivity", intent);
+                                Debug.Log("[AndroidNav] startActivity con Activity context (misma task, Unity en pause).");
+                            }
+                        }
+                        catch (System.Exception ex)
+                        {
+                            Debug.LogError("[AndroidNav] Error startActivity (activity): " + ex);
+                            LaunchWithAppContext(jsonPath); // último recurso
+                        }
+                    }));
                 }
             }
-            catch (System.Exception e)
+            catch (System.Exception ex)
             {
-                Debug.LogError("AndroidNav.GoToCapture error: " + e);
+                Debug.LogError("[AndroidNav] Error al obtener currentActivity: " + ex);
+                LaunchWithAppContext(jsonPath); // último recurso
             }
+    #else
+            Debug.Log("[AndroidNav] Solo Android.");
     #endif
+        }
+
+        // Fallback si NO hay Activity (por ejemplo, si Unity ya no está en foreground)
+        private static void LaunchWithAppContext(string jsonPath)
+        {
+            try
+            {
+                using (var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+                using (var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
+                using (var app = activity?.Call<AndroidJavaObject>("getApplicationContext"))
+                using (var intent = new AndroidJavaObject("android/content/Intent",
+                    new AndroidJavaClass("android/content/Intent").GetStatic<string>("ACTION_MAIN")))
+                {
+                    intent.Call<AndroidJavaObject>("setClassName", "com.example.roomify", "com.example.roomify.CaptureActivity");
+                    intent.Call<AndroidJavaObject>("putExtra", "ROOM_JSON_PATH", jsonPath);
+                    // Aquí SÍ toca NEW_TASK por ser app context, pero sin CLEAR_TOP
+                    int FLAG_ACTIVITY_NEW_TASK = new AndroidJavaClass("android/content/Intent")
+                        .GetStatic<int>("FLAG_ACTIVITY_NEW_TASK");
+                    intent.Call<AndroidJavaObject>("addFlags", FLAG_ACTIVITY_NEW_TASK);
+
+                    app.Call("startActivity", intent);
+                    Debug.Log("[AndroidNav] Lanzando CaptureActivity con ApplicationContext (fallback).");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError("[AndroidNav] Fallback con ApplicationContext falló: " + ex);
+            }
         }
     }
 
-    // -----------------------
-    // Botón: Eliminar (undo soft)
-    // -----------------------
     public void OnBtnEliminar()
     {
         // Borra todo lo creado desde la última confirmación (datos y visuales)
@@ -326,6 +383,7 @@ public class LineManager : MonoBehaviour
         string json = JsonUtility.ToJson(data, true);
         string dir = Application.persistentDataPath;
         string finalPath = Path.Combine(dir, "room_data.json");
+
         string tmpPath   = Path.Combine(dir, "room_data.tmp");
         File.WriteAllText(tmpPath, json);
         if (File.Exists(finalPath)) File.Delete(finalPath);
