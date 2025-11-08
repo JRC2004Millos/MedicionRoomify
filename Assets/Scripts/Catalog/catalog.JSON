@@ -1,0 +1,86 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2025-10-30T10:00:00Z",
+  "items": [
+    {
+      "id": "mueble_01",
+      "name": "Sofá Chesterfield",
+      "category": "Mueble",
+      "prefabPath": "Prefabs/SofaChesterfield",
+      "thumbnail": "thumbnails/sofa_chesterfield",
+      "sizeMeters": { "w": 2.1, "h": 0.8, "d": 0.9 },
+      "tags": ["sala", "cuero", "clásico"],
+      "placementScale": 1.0
+    },
+    {
+      "id": "mueble_02",
+      "name": "Mesa de Centro Roble",
+      "category": "Mueble",
+      "prefabPath": "Prefabs/MesaCentroRoble",
+      "thumbnail": "thumbnails/mesa_roble",
+      "sizeMeters": { "w": 1.1, "h": 0.4, "d": 0.6 },
+      "tags": ["sala", "madera", "minimal"],
+      "placementScale": 1.0
+    },
+    {
+      "id": "pc_01",
+      "name": "Portátil 15\"",
+      "category": "Computador",
+      "prefabPath": "Prefabs/Laptop15",
+      "thumbnail": "thumbnails/laptop15",
+      "sizeMeters": { "w": 0.36, "h": 0.023, "d": 0.25 },
+      "tags": ["work", "mobile"],
+      "placementScale": 1.0
+    },
+    {
+      "id": "pc_02",
+      "name": "Desktop Torre + Monitor",
+      "category": "Computador",
+      "prefabPath": "Prefabs/DesktopSet",
+      "thumbnail": "thumbnails/desktop_set",
+      "sizeMeters": { "w": 0.55, "h": 0.45, "d": 0.22 },
+      "tags": ["oficina", "alto-rendimiento"],
+      "placementScale": 1.0
+    },
+    {
+      "id": "libro_01",
+      "name": "Libro tapa dura A",
+      "category": "Libro",
+      "prefabPath": "Prefabs/BookHardA",
+      "thumbnail": "thumbnails/book_a",
+      "sizeMeters": { "w": 0.16, "h": 0.035, "d": 0.23 },
+      "tags": ["decor", "lectura"],
+      "placementScale": 1.0
+    },
+    {
+      "id": "libro_02",
+      "name": "Libro tapa blanda B",
+      "category": "Libro",
+      "prefabPath": "Prefabs/BookSoftB",
+      "thumbnail": "thumbnails/book_b",
+      "sizeMeters": { "w": 0.15, "h": 0.02, "d": 0.22 },
+      "tags": ["decor", "lectura"],
+      "placementScale": 1.0
+    },
+    {
+      "id": "silla_01",
+      "name": "Silla Eames",
+      "category": "Silla",
+      "prefabPath": "Prefabs/SillaEames",
+      "thumbnail": "thumbnails/silla_eames",
+      "sizeMeters": { "w": 0.48, "h": 0.82, "d": 0.5 },
+      "tags": ["comedor", "icónica"],
+      "placementScale": 1.0
+    },
+    {
+      "id": "silla_02",
+      "name": "Silla Oficina Mesh",
+      "category": "Silla",
+      "prefabPath": "Prefabs/SillaOficinaMesh",
+      "thumbnail": "thumbnails/silla_mesh",
+      "sizeMeters": { "w": 0.6, "h": 1.1, "d": 0.6 },
+      "tags": ["oficina", "ergonómica"],
+      "placementScale": 1.0
+    }
+  ]
+}

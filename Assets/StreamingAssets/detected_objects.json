@@ -1,0 +1,53 @@
+{
+    "sourceScreenWidth": 512,
+    "sourceScreenHeight": 512,
+    "coordsAreNormalized": false,
+    "yOriginIsTop": true,
+    "detections": [
+        {
+            "categoryName": "screen",
+            "confidence": 0.7957903742790222,
+            "timestamp": "2025-10-30 10:43:19",
+            "position": {
+                "x": 404.4284973144531,
+                "y": 488.0065002441406
+            }
+        },
+        {
+            "categoryName": "computer_mouse",
+            "confidence": 0.7842012047767639,
+            "timestamp": "2025-10-30 10:43:19",
+            "position": {
+                "x": 457.5,
+                "y": 286.9565124511719
+            }
+        },
+        {
+            "categoryName": "computer_keyboard",
+            "confidence": 0.7339814305305481,
+            "timestamp": "2025-10-30 10:43:19",
+            "position": {
+                "x": 419.95751953125,
+                "y": 323.4355163574219
+            }
+        },
+        {
+            "categoryName": "furniture",
+            "confidence": 0.5678698420524597,
+            "timestamp": "2025-10-30 10:43:23",
+            "position": {
+                "x": 428.04400634765627,
+                "y": 161.9215087890625
+            }
+        },
+        {
+            "categoryName": "chair",
+            "confidence": 0.6026374101638794,
+            "timestamp": "2025-10-30 10:43:24",
+            "position": {
+                "x": 402.54901123046877,
+                "y": 222.45550537109376
+            }
+        }
+    ]
+}
