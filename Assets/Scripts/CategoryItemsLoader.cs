@@ -15,6 +15,11 @@ public class CategoryItemsLoader : MonoBehaviour
     [Header("Resources base path")]
     public string basePath = "Catalog";
 
+    public System.Action OnItemsShown;   // para avisar que estamos en vista de ítems
+    public System.Action OnCategoriesShown; // para avisar que volvimos a categorías
+
+    public GameObject categoriesUIPrefab;
+
     static readonly Dictionary<string, string> CatMap = new(StringComparer.OrdinalIgnoreCase)
     {
         // sillas
@@ -67,32 +72,46 @@ public class CategoryItemsLoader : MonoBehaviour
             go.name = $"Item_{pf.name}";
 
             // Texto
-            var txt = go.GetComponentInChildren<TMP_Text>(true);
+            var txt = go.GetComponentInChildren<TMPro.TMP_Text>(true);
             if (txt) txt.text = PrettyName(pf.name);
 
-            // Botón con click
+            // Drag & Drop hacia el mundo
+            var drag = go.GetComponent<ItemDragToWorld>();
+            if (!drag) drag = go.AddComponent<ItemDragToWorld>();
+            drag.SetItemPrefab(pf); // <- este es el prefab real a soltar
+
+            // Botón con click (si quieres mantener el flujo por tap)
             var btn = go.GetComponentInChildren<Button>(true);
             if (btn)
             {
                 btn.onClick.RemoveAllListeners();
                 var localPrefab = pf; // capturar referencia
-                
+
                 btn.onClick.AddListener(() =>
                 {
                     Debug.Log($"[Catalog] Seleccionado: {localPrefab.name}");
-                    
-                    // ⬅️ LLAMAR AL OBJECT PLACER
                     if (ObjectPlacer.Instance != null)
-                    {
                         ObjectPlacer.Instance.BeginPlacement(localPrefab);
-                    }
                     else
-                    {
                         Debug.LogError("[Catalog] ObjectPlacer no encontrado en la escena");
-                    }
                 });
             }
         }
+
+        OnItemsShown?.Invoke();
+    }
+
+    public void ShowCategories()
+    {
+        // limpia contenido actual
+        for (int i = content.childCount - 1; i >= 0; i--)
+            Destroy(content.GetChild(i).gameObject);
+
+        // instancia el panel de categorías original
+        var cats = Instantiate(categoriesUIPrefab, content);
+        cats.name = "DetectedCategoriesUI";
+
+        OnCategoriesShown?.Invoke(); // <- avisa que oculte el botón Volver
     }
 
     string NormalizeCategory(string raw)
@@ -115,11 +134,11 @@ public class CategoryItemsLoader : MonoBehaviour
     {
         // Eliminar números y guiones bajos
         string s = raw.Replace("_", " ");
-        
+
         // Capitalizar primera letra
         if (s.Length > 0)
             s = char.ToUpper(s[0]) + s.Substring(1);
-            
+
         return s;
     }
 
