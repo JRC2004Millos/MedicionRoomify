@@ -9,7 +9,7 @@ public class ObjectPlacer : MonoBehaviour
     [SerializeField] private float maxRaycastDistance = 50f;
     [SerializeField] private float defaultPlacementDistance = 2f;
     [SerializeField] private LayerMask placementLayerMask = -1; // Todo por defecto
-    
+
     [Header("Preview Settings")]
     [SerializeField] private Color validColor = new Color(0, 1, 0, 0.5f);
     [SerializeField] private Color invalidColor = new Color(1, 1, 0, 0.5f);
@@ -43,6 +43,10 @@ public class ObjectPlacer : MonoBehaviour
         if (!isPlacementMode || previewObject == null)
             return;
 
+        // ⛔ Evita mover/colocar si el puntero está sobre UI
+        if (InputGuard.OverUI())
+            return;
+
         // Actualizar posición del preview
         UpdatePreviewPosition();
 
@@ -55,13 +59,11 @@ public class ObjectPlacer : MonoBehaviour
                 PlaceObject();
             }
         }
-        // Para testing en editor
         else if (Input.GetMouseButtonDown(0) && hasValidPlacement)
         {
             PlaceObject();
         }
 
-        // Cancelar con ESC (opcional)
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             CancelPlacement();
@@ -97,12 +99,12 @@ public class ObjectPlacer : MonoBehaviour
     public void CancelPlacement()
     {
         Debug.Log("[ObjectPlacer] Colocación cancelada");
-        
+
         isPlacementMode = false;
-        
+
         if (previewObject != null)
             Destroy(previewObject);
-        
+
         currentPrefab = null;
         hasValidPlacement = false;
     }
@@ -132,9 +134,9 @@ public class ObjectPlacer : MonoBehaviour
         // Raycast desde el centro de la pantalla
         Vector2 screenCenter = new Vector2(Screen.width / 2f, Screen.height / 2f);
         Ray ray = mainCamera.ScreenPointToRay(screenCenter);
-        
+
         RaycastHit hit;
-        
+
         // Intentar raycast en superficies
         if (Physics.Raycast(ray, out hit, maxRaycastDistance, placementLayerMask))
         {
@@ -145,7 +147,7 @@ public class ObjectPlacer : MonoBehaviour
 
             previewObject.transform.SetPositionAndRotation(lastValidPosition, lastValidRotation);
             SetPreviewColor(validColor);
-            
+
             Debug.DrawLine(ray.origin, hit.point, Color.green); // Debug visual
         }
         else
@@ -157,7 +159,7 @@ public class ObjectPlacer : MonoBehaviour
 
             previewObject.transform.SetPositionAndRotation(lastValidPosition, lastValidRotation);
             SetPreviewColor(invalidColor); // Amarillo para indicar "sin superficie"
-            
+
             Debug.DrawRay(ray.origin, ray.direction * defaultPlacementDistance, Color.yellow); // Debug visual
         }
     }
@@ -188,7 +190,7 @@ public class ObjectPlacer : MonoBehaviour
             {
                 newMats[i] = new Material(rend.materials[i]);
                 newMats[i].color = color;
-                
+
                 // Configurar transparencia
                 if (newMats[i].HasProperty("_Mode"))
                 {
@@ -203,7 +205,7 @@ public class ObjectPlacer : MonoBehaviour
                 {
                     newMats[i].SetInt("_ZWrite", 0);
                 }
-                
+
                 newMats[i].renderQueue = 3000;
             }
             rend.materials = newMats;
@@ -227,6 +229,6 @@ public class ObjectPlacer : MonoBehaviour
 
     // Métodos públicos útiles
     public bool IsPlacing() => isPlacementMode;
-    
+
     public GameObject GetCurrentPrefab() => currentPrefab;
 }
