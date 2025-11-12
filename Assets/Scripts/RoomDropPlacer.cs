@@ -8,6 +8,9 @@ public class RoomDropPlacer : MonoBehaviour
     [SerializeField] RoomSpace roomSpace;
     [SerializeField] Transform parentRoot;
 
+    [Header("Wall collision settings")]
+    [SerializeField] LayerMask wallMask;
+
     [Header("Placement options")]
     [SerializeField] bool clampToBounds = true;
     [SerializeField] bool enableSnap = false;
@@ -27,7 +30,6 @@ public class RoomDropPlacer : MonoBehaviour
 
     [Header("Real-world scale")]
     [SerializeField] bool useRealisticScale = true;   // activa escalado realista por categoría
-
 
     void Reset()
     {
@@ -53,7 +55,7 @@ public class RoomDropPlacer : MonoBehaviour
 
         // 2) Clamp a bounds (XZ)
         if (clampToBounds)
-            worldPos = ClampToRoomXZ(worldPos); // helper de abajo
+            worldPos = roomSpace.ClampWorldToInside(worldPos);
 
         // 3) Instanciar bajo RoomRoot
         spawned = Instantiate(prefab, parentRoot ? parentRoot : transform);
@@ -100,6 +102,14 @@ public class RoomDropPlacer : MonoBehaviour
         if (enableSnap)
             spawned.transform.position = SnapXZ(spawned.transform.position, gridSnap);
 
+
+        // 7) Empujar fuera de paredes si quedó tocándolas
+        if (ResolveWallPenetration(spawned, wallMask))
+        {
+            // Reafirma Y exacta sobre el piso, por si el empuje movió algo verticalmente
+            AlignBaseToFloor(spawned, floorY);
+        }
+
         return true;
     }
 
@@ -108,15 +118,6 @@ public class RoomDropPlacer : MonoBehaviour
         if (step <= 0f) return p;
         p.x = Mathf.Round(p.x / step) * step;
         p.z = Mathf.Round(p.z / step) * step;
-        return p;
-    }
-
-    // Helper: clamp usando los campos de RoomSpace
-    private Vector3 ClampToRoomXZ(Vector3 p)
-    {
-        // Ajusta los nombres si en tu RoomSpace están diferentes
-        p.x = Mathf.Clamp(p.x, roomSpace.minX, roomSpace.maxX);
-        p.z = Mathf.Clamp(p.z, roomSpace.minZ, roomSpace.maxZ);
         return p;
     }
 
@@ -266,4 +267,49 @@ public class RoomDropPlacer : MonoBehaviour
         }
     }
 
+    bool ResolveWallPenetration(GameObject go, LayerMask wallsMask, float extra = 0.002f, int maxIters = 5)
+    {
+        // Asegúrate de que lo que colocas tenga al menos un Collider;
+        // si no, puedes añadir temporalmente un BoxCollider con los bounds.
+        var myCols = go.GetComponentsInChildren<Collider>();
+        if (myCols == null || myCols.Length == 0) return false;
+
+        bool moved = false;
+
+        for (int iter = 0; iter < maxIters; iter++)
+        {
+            bool anyPenetration = false;
+
+            foreach (var myCol in myCols)
+            {
+                // Volumen de búsqueda aproximado del collider
+                var b = myCol.bounds;
+                var hits = Physics.OverlapBox(
+                    b.center, b.extents + Vector3.one * 0.001f,
+                    go.transform.rotation, wallsMask,
+                    QueryTriggerInteraction.Ignore);
+
+                foreach (var other in hits)
+                {
+                    // Evitar contarse a sí mismo
+                    if (other.transform.root == go.transform.root) continue;
+
+                    if (Physics.ComputePenetration(
+                        myCol, myCol.transform.position, myCol.transform.rotation,
+                        other, other.transform.position, other.transform.rotation,
+                        out Vector3 dir, out float dist))
+                    {
+                        // Mover en la dirección mínima que elimina la intersección
+                        go.transform.position += dir * (dist + extra);
+                        moved = true;
+                        anyPenetration = true;
+                    }
+                }
+            }
+
+            if (!anyPenetration) break; // ya no está penetrando nada
+        }
+
+        return moved;
+    }
 }

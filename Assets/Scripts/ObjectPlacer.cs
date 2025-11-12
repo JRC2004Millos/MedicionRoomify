@@ -43,10 +43,6 @@ public class ObjectPlacer : MonoBehaviour
         if (!isPlacementMode || previewObject == null)
             return;
 
-        // ⛔ Evita mover/colocar si el puntero está sobre UI
-        if (InputGuard.OverUI())
-            return;
-
         // Actualizar posición del preview
         UpdatePreviewPosition();
 

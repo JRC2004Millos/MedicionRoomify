@@ -15,10 +15,23 @@ public class CategoryItemsLoader : MonoBehaviour
     [Header("Resources base path")]
     public string basePath = "Catalog";
 
-    public System.Action OnItemsShown;   // para avisar que estamos en vista de ítems
-    public System.Action OnCategoriesShown; // para avisar que volvimos a categorías
+    public Action OnItemsShown;
+    public Action OnCategoriesShown;
 
     public GameObject categoriesUIPrefab;
+
+    [Header("Back nav")]
+    public Button backButton;
+    public GameObject backButtonPrefab;
+    public bool showBackOnItems = true;
+
+    [Header("Sizing from Categories")]
+    public RectTransform categoriesContentForSizing;
+
+    [Header("Item sizing (se auto-sincroniza)")]
+    [SerializeField] float itemPreferredWidth  = 180f;
+    [SerializeField] float itemPreferredHeight = 72f;
+    [SerializeField] float itemSpacing         = 8f;
 
     static readonly Dictionary<string, string> CatMap = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -42,6 +55,135 @@ public class CategoryItemsLoader : MonoBehaviour
         { "furniture", "furniture" },
     };
 
+    void Awake()
+    {
+        ConfigureContentLayout();
+
+        if (backButton != null)
+        {
+            backButton.onClick.RemoveAllListeners();
+            backButton.gameObject.SetActive(false);
+            backButton.onClick.AddListener(ShowCategories);
+        }
+    }
+
+    void SyncSizingFromCategories()
+    {
+        if (categoriesContentForSizing == null) return;
+
+        var gCat = categoriesContentForSizing.GetComponent<GridLayoutGroup>();
+        if (gCat != null)
+        {
+            itemPreferredWidth  = gCat.cellSize.x;
+            itemPreferredHeight = gCat.cellSize.y;
+            itemSpacing         = Mathf.Max(gCat.spacing.x, gCat.spacing.y);
+            ApplyContentLayoutParamsFromCategories();
+            return;
+        }
+
+        var hCat = categoriesContentForSizing.GetComponent<HorizontalLayoutGroup>();
+        if (hCat != null)
+        {
+            itemSpacing = hCat.spacing;
+
+            RectTransform refChild = null;
+            if (categoriesContentForSizing.childCount > 0)
+                refChild = categoriesContentForSizing.GetChild(0) as RectTransform;
+
+            if (refChild != null)
+            {
+                var le = refChild.GetComponent<LayoutElement>();
+                if (le != null)
+                {
+                    if (le.preferredWidth  > 0f) itemPreferredWidth  = le.preferredWidth;
+                    if (le.preferredHeight > 0f) itemPreferredHeight = le.preferredHeight;
+                }
+                else
+                {
+                    if (refChild.rect.width  > 0f) itemPreferredWidth  = refChild.rect.width;
+                    if (refChild.rect.height > 0f) itemPreferredHeight = refChild.rect.height;
+                }
+            }
+
+            ApplyContentLayoutParamsFromCategories(hCat.padding);
+            return;
+        }
+
+        if (categoriesContentForSizing.childCount > 0)
+        {
+            var refChild = categoriesContentForSizing.GetChild(0) as RectTransform;
+            if (refChild != null)
+            {
+                var le = refChild.GetComponent<LayoutElement>();
+                if (le != null)
+                {
+                    if (le.preferredWidth  > 0f) itemPreferredWidth  = le.preferredWidth;
+                    if (le.preferredHeight > 0f) itemPreferredHeight = le.preferredHeight;
+                }
+                else
+                {
+                    if (refChild.rect.width  > 0f) itemPreferredWidth  = refChild.rect.width;
+                    if (refChild.rect.height > 0f) itemPreferredHeight = refChild.rect.height;
+                }
+            }
+            ApplyContentLayoutParamsFromCategories();
+        }
+    }
+
+    void ApplyContentLayoutParamsFromCategories(RectOffset paddingFromCategories = null)
+    {
+        if (content == null) return;
+
+        var h = content.GetComponent<HorizontalLayoutGroup>();
+        if (h != null)
+        {
+            h.childControlWidth = true;
+            h.childControlHeight = true;
+            h.childForceExpandWidth = false;
+            h.childForceExpandHeight = false;
+            h.spacing = itemSpacing;
+
+            if (paddingFromCategories != null)
+                h.padding = new RectOffset(paddingFromCategories.left, paddingFromCategories.right,
+                                           paddingFromCategories.top, paddingFromCategories.bottom);
+            else
+                h.padding = new RectOffset(4, 4, 4, 4);
+        }
+
+        var g = content.GetComponent<GridLayoutGroup>();
+        if (g != null)
+        {
+            g.cellSize = new Vector2(itemPreferredWidth, itemPreferredHeight);
+            g.spacing = new Vector2(itemSpacing, itemSpacing);
+        }
+    }
+
+    void EnsureBackButtonAtStart()
+    {
+        if (backButton == null && backButtonPrefab != null)
+        {
+            var go = Instantiate(backButtonPrefab, content != null ? content : transform);
+            backButton = go.GetComponent<Button>();
+            if (backButton == null)
+            {
+                Debug.LogError("[Catalog] El prefab del BackButton no tiene componente Button en la raíz.");
+                return;
+            }
+            backButton.onClick.RemoveAllListeners();
+            backButton.onClick.AddListener(ShowCategories);
+        }
+
+        if (backButton != null && content != null && backButton.transform.parent != content)
+            backButton.transform.SetParent(content, worldPositionStays: false);
+
+        if (backButton != null)
+        {
+            backButton.transform.SetAsFirstSibling();
+            backButton.gameObject.SetActive(showBackOnItems);
+            ApplySizing(backButton.gameObject);
+        }
+    }
+
     public void ShowCategory(string rawCategory)
     {
         if (content == null || itemButtonPrefab == null)
@@ -50,43 +192,35 @@ public class CategoryItemsLoader : MonoBehaviour
             return;
         }
 
-        string cat = NormalizeCategory(rawCategory);
+        string cat  = NormalizeCategory(rawCategory);
         string path = $"{basePath}/{cat}".Replace("\\", "/").Trim('/');
 
         GameObject[] prefabs = Resources.LoadAll<GameObject>(path);
         Debug.Log($"[Catalog] Cargando {prefabs.Length} prefabs desde Resources/{path}");
 
-        if (prefabs.Length == 0)
-        {
-            Debug.LogWarning($"[Catalog] No se encontraron prefabs en Resources/{path}");
-        }
+        ClearContent();
+        SyncSizingFromCategories();
+        ConfigureContentLayout();
+        EnsureBackButtonAtStart();
 
-        // Limpiar UI anterior
-        for (int i = content.childCount - 1; i >= 0; i--)
-            Destroy(content.GetChild(i).gameObject);
-
-        // Crear botones
         foreach (var pf in prefabs)
         {
             var go = Instantiate(itemButtonPrefab, content);
             go.name = $"Item_{pf.name}";
+            ApplySizing(go);
 
-            // Texto
-            var txt = go.GetComponentInChildren<TMPro.TMP_Text>(true);
+            var txt = go.GetComponentInChildren<TMP_Text>(true);
             if (txt) txt.text = PrettyName(pf.name);
 
-            // Drag & Drop hacia el mundo
             var drag = go.GetComponent<ItemDragToWorld>();
             if (!drag) drag = go.AddComponent<ItemDragToWorld>();
-            drag.SetItemPrefab(pf); // <- este es el prefab real a soltar
+            drag.SetItemPrefab(pf);
 
-            // Botón con click (si quieres mantener el flujo por tap)
             var btn = go.GetComponentInChildren<Button>(true);
             if (btn)
             {
                 btn.onClick.RemoveAllListeners();
-                var localPrefab = pf; // capturar referencia
-
+                var localPrefab = pf;
                 btn.onClick.AddListener(() =>
                 {
                     Debug.Log($"[Catalog] Seleccionado: {localPrefab.name}");
@@ -103,15 +237,13 @@ public class CategoryItemsLoader : MonoBehaviour
 
     public void ShowCategories()
     {
-        // limpia contenido actual
-        for (int i = content.childCount - 1; i >= 0; i--)
-            Destroy(content.GetChild(i).gameObject);
+        ClearContent();
+        if (backButton != null) backButton.gameObject.SetActive(false);
 
-        // instancia el panel de categorías original
         var cats = Instantiate(categoriesUIPrefab, content);
         cats.name = "DetectedCategoriesUI";
 
-        OnCategoriesShown?.Invoke(); // <- avisa que oculte el botón Volver
+        OnCategoriesShown?.Invoke();
     }
 
     string NormalizeCategory(string raw)
@@ -132,13 +264,9 @@ public class CategoryItemsLoader : MonoBehaviour
 
     string PrettyName(string raw)
     {
-        // Eliminar números y guiones bajos
         string s = raw.Replace("_", " ");
-
-        // Capitalizar primera letra
         if (s.Length > 0)
             s = char.ToUpper(s[0]) + s.Substring(1);
-
         return s;
     }
 
@@ -153,5 +281,64 @@ public class CategoryItemsLoader : MonoBehaviour
                 sb.Append(norm[i]);
         }
         return sb.ToString().Normalize(NormalizationForm.FormC);
+    }
+
+    private void ClearContent()
+    {
+        if (content == null) return;
+
+        for (int i = content.childCount - 1; i >= 0; i--)
+        {
+            var child = content.GetChild(i);
+            if (backButton != null && child == backButton.transform)
+                continue;
+            Destroy(child.gameObject);
+        }
+    }
+
+    void ConfigureContentLayout()
+    {
+        if (content == null) return;
+
+        var h = content.GetComponent<HorizontalLayoutGroup>();
+        if (h != null)
+        {
+            h.childControlWidth     = true;
+            h.childControlHeight    = true;
+            h.childForceExpandWidth = false;
+            h.childForceExpandHeight= false;
+            h.spacing               = itemSpacing;
+            if (h.padding == null) h.padding = new RectOffset(4,4,4,4);
+        }
+
+        var g = content.GetComponent<GridLayoutGroup>();
+        if (g != null)
+        {
+            g.cellSize = new Vector2(itemPreferredWidth, itemPreferredHeight);
+            g.spacing  = new Vector2(itemSpacing, itemSpacing);
+        }
+    }
+
+    void ApplySizing(GameObject go)
+    {
+        if (go == null) return;
+
+        var rt = go.transform as RectTransform;
+        if (rt != null)
+        {
+            rt.anchorMin = new Vector2(rt.anchorMin.x, 0.5f);
+            rt.anchorMax = new Vector2(rt.anchorMax.x, 0.5f);
+            rt.pivot    = new Vector2(0.5f, 0.5f);
+        }
+
+        var le = go.GetComponent<LayoutElement>();
+        if (le == null) le = go.AddComponent<LayoutElement>();
+
+        le.minWidth        = itemPreferredWidth;
+        le.minHeight       = itemPreferredHeight;
+        le.preferredWidth  = itemPreferredWidth;
+        le.preferredHeight = itemPreferredHeight;
+        le.flexibleWidth   = 0;
+        le.flexibleHeight  = 0;
     }
 }

@@ -21,6 +21,14 @@ public class RoomBuilder : MonoBehaviour
 
     private RoomData data;
 
+    private float floorBaseY = 0f;
+
+    public IReadOnlyList<Vector2> FloorPolygon2D => floorPolygon2D;
+    public float FloorBaseY => floorBaseY;
+    public float RoomHeightMeters => data != null && data.room_dimensions != null ? data.room_dimensions.height : 2.5f;
+    private List<Vector2> floorPolygon2D = new List<Vector2>();
+
+
     void Start()
     {
         string path = GetJsonPath();
@@ -68,12 +76,61 @@ public class RoomBuilder : MonoBehaviour
             Debug.LogError("[RoomBuilder] No se pudo derivar el polígono del piso.");
             return;
         }
+        floorPolygon2D = floorVerts2D.ToList();
 
         BuildFloor(floorVerts2D);
         BuildWalls(data.walls, cornersById, data.room_dimensions != null ? data.room_dimensions.height : 2.5f);
 
         FrameCameraToBounds(floorVerts2D);
+
+        var rs = FindFirstObjectByType<RoomSpace>();
+        if (rs != null)
+        {
+            rs.SetFloorPolygonWorldXZ(floorVerts2D);
+
+            rs.minX = floorVerts2D.Min(v => v.x);
+            rs.maxX = floorVerts2D.Max(v => v.x);
+            rs.minZ = floorVerts2D.Min(v => v.y);
+            rs.maxZ = floorVerts2D.Max(v => v.y);
+        }
+
+        GetComponent<RoomVisualFallback>()?.ApplyFallbacks();
+
         Debug.Log("[RoomBuilder] Renderización completada.");
+    }
+
+    public bool TryGetSpawnInside(out Vector3 worldPoint)
+    {
+        worldPoint = Vector3.zero;
+        if (floorPolygon2D == null || floorPolygon2D.Count < 3) return false;
+
+        // Centroide de área de un polígono simple (fórmula de “shoelace”)
+        double A = 0.0; // 2 * area con signo
+        double Cx = 0.0;
+        double Cz = 0.0;
+        int n = floorPolygon2D.Count;
+
+        for (int i = 0, j = n - 1; i < n; j = i++)
+        {
+            double xi = floorPolygon2D[i].x;
+            double zi = floorPolygon2D[i].y;
+            double xj = floorPolygon2D[j].x;
+            double zj = floorPolygon2D[j].y;
+            double cross = xj * zi - xi * zj;
+            A += cross;
+            Cx += (xj + xi) * cross;
+            Cz += (zj + zi) * cross;
+        }
+
+        if (Mathf.Approximately((float)A, 0f)) return false; // degenerado
+
+        A *= 0.5;
+        double factor = 1.0 / (6.0 * A);
+        float cx = (float)(Cx * factor);
+        float cz = (float)(Cz * factor);
+
+        worldPoint = new Vector3(cx, floorBaseY, cz);
+        return true;
     }
 
     string GetJsonPath()
@@ -111,6 +168,7 @@ public class RoomBuilder : MonoBehaviour
             verts2D.Reverse();
 
         const float Y = 0.05f;
+        floorBaseY = Y;
 
         var verts3D = verts2D.Select(v => new Vector3(v.x, Y, v.y)).ToArray();
 
@@ -145,9 +203,13 @@ public class RoomBuilder : MonoBehaviour
         mesh.RecalculateTangents();
         mesh.RecalculateBounds();
 
-        var go = new GameObject("Floor", typeof(MeshFilter), typeof(MeshRenderer));
+        var go = new GameObject("Floor", typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider));
+        go.transform.SetParent(this.transform, true);
         go.GetComponent<MeshFilter>().mesh = mesh;
         var mr = go.GetComponent<MeshRenderer>();
+        var mc = go.GetComponent<MeshCollider>();
+        mc.sharedMesh = mesh;
+        mc.convex = false;
 
         var textures = FindFirstObjectByType<RoomTextures>();
         if (textures != null)
@@ -178,7 +240,8 @@ public class RoomBuilder : MonoBehaviour
 
             var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
             wall.name = $"Wall_{w.from}_{w.to}";
-            wall.transform.position = mid + Vector3.up * (height * 0.5f);
+            wall.transform.SetParent(this.transform, true);
+            wall.transform.position = mid + Vector3.up * (floorBaseY + height * 0.5f);
             wall.transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
             wall.transform.localScale = new Vector3(wallThickness, height, len);
 

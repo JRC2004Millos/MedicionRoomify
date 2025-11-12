@@ -535,6 +535,14 @@ MonoBehaviour:
     type: 3}
   basePath: Catalog
   categoriesUIPrefab: {fileID: 196864061}
+  backButton: {fileID: 0}
+  backButtonPrefab: {fileID: 7628278786177312605, guid: f7db2660d45cd8747988c2698be10a6b,
+    type: 3}
+  showBackOnItems: 1
+  categoriesContentForSizing: {fileID: 0}
+  itemPreferredWidth: 180
+  itemPreferredHeight: 72
+  itemSpacing: 8
 --- !u!4 &839847631
 Transform:
   m_ObjectHideFlags: 0
@@ -619,6 +627,7 @@ GameObject:
   - component: {fileID: 1057308856}
   - component: {fileID: 1057308860}
   - component: {fileID: 1057308859}
+  - component: {fileID: 1057308861}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -717,6 +726,16 @@ MonoBehaviour:
   lookSensitivity: 120
   panSpeedTouch: 1.2
   pinchZoomSpeed: 2
+  eyeHeight: 1.65
+  headClearance: 0.05
+  roomHeightFallback: 2.6
+  uiBlockAreas: []
+  uiCamera: {fileID: 0}
+  snapInsideOnStart: 1
+  spawnFromTop: 10
+  spawnMargin: 0.1
+  forcedSpawn: {fileID: 0}
+  snapToFloorAtSpawn: 1
 --- !u!114 &1057308860
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -761,6 +780,31 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+--- !u!143 &1057308861
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1057308855}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 2
+  m_Radius: 0.5
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &1164014486
 GameObject:
   m_ObjectHideFlags: 0
@@ -895,6 +939,9 @@ MonoBehaviour:
   sceneCamera: {fileID: 1057308857}
   roomSpace: {fileID: 893664012}
   parentRoot: {fileID: 1671157447}
+  wallMask:
+    serializedVersion: 2
+    m_Bits: 0
   clampToBounds: 1
   enableSnap: 0
   gridSnap: 0.25
@@ -922,79 +969,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &1299156368
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 8483505931335109848, guid: a1f3913e8487a4880ad17f363ff9134b,
-        type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 547.33496
-      objectReference: {fileID: 0}
-    - target: {fileID: 8483505931335109848, guid: a1f3913e8487a4880ad17f363ff9134b,
-        type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.5334003
-      objectReference: {fileID: 0}
-    - target: {fileID: 8483505931335109848, guid: a1f3913e8487a4880ad17f363ff9134b,
-        type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -423.8258
-      objectReference: {fileID: 0}
-    - target: {fileID: 8483505931335109848, guid: a1f3913e8487a4880ad17f363ff9134b,
-        type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 8483505931335109848, guid: a1f3913e8487a4880ad17f363ff9134b,
-        type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 8483505931335109848, guid: a1f3913e8487a4880ad17f363ff9134b,
-        type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8483505931335109848, guid: a1f3913e8487a4880ad17f363ff9134b,
-        type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8483505931335109848, guid: a1f3913e8487a4880ad17f363ff9134b,
-        type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: -90
-      objectReference: {fileID: 0}
-    - target: {fileID: 8483505931335109848, guid: a1f3913e8487a4880ad17f363ff9134b,
-        type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8483505931335109848, guid: a1f3913e8487a4880ad17f363ff9134b,
-        type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 9146994594600605282, guid: a1f3913e8487a4880ad17f363ff9134b,
-        type: 3}
-      propertyPath: m_Name
-      value: CamaCalifornia
-      objectReference: {fileID: 0}
-    - target: {fileID: 9146994594600605282, guid: a1f3913e8487a4880ad17f363ff9134b,
-        type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: a1f3913e8487a4880ad17f363ff9134b, type: 3}
 --- !u!1 &1660586834
 GameObject:
   m_ObjectHideFlags: 0
@@ -1264,6 +1238,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1781436038}
   - component: {fileID: 1781436037}
+  - component: {fileID: 1781436039}
   m_Layer: 0
   m_Name: RoomBuilder
   m_TagString: Untagged
@@ -1302,6 +1277,34 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1781436039
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1781436036}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e63da883cd4a3544930ac75fb08ceb2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  runOnStart: 1
+  wallDefaultMat: {fileID: 2100000, guid: fc226930e8fad4c499969204cecfbc05, type: 2}
+  floorDefaultMat: {fileID: 2100000, guid: 8f2dd096093cb47ae8b94ec8a6bf5e40, type: 2}
+  ceilingDefaultMat: {fileID: 2100000, guid: c02020fe6690f4b3cb5b6001f36547ee, type: 2}
+  floorKeywords:
+  - floor
+  - piso
+  wallKeywords:
+  - wall
+  - pared
+  ceilKeywords:
+  - ceiling
+  - techo
+  defaultCeilingHeight: 2.6
+  createCeilingIfMissing: 1
+  ceilingObjectName: Ceiling
 --- !u!1 &1844953792
 GameObject:
   m_ObjectHideFlags: 0
@@ -1484,4 +1487,3 @@ SceneRoots:
   - {fileID: 252368696}
   - {fileID: 839847631}
   - {fileID: 1295253353}
-  - {fileID: 1299156368}
