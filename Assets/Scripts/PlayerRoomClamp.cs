@@ -30,12 +30,12 @@ public class PlayerRoomClamp : MonoBehaviour
         if (!room) return;
 
         // --- límites verticales del cuarto ---
-        float floorY = room.floorY; // 0.05 m en tu build de piso:contentReference[oaicite:2]{index=2}
-        float roomH  = builder ? builder.RoomHeightMeters : 2.5f; // desde JSON:contentReference[oaicite:3]{index=3}
+        float floorY = room.floorY; // viene de RoomSpace (piso), ya lo tienes aquí
+        float roomH = builder ? builder.RoomHeightMeters : 2.5f; // altura confiable
 
-        // mitad de la “altura del jugador”
+        // mitad de la “altura del jugador” (funciona con o sin CharacterController)
         float halfH = cc ? (cc.height * 0.5f) : (eyeHeightIfNoCC * 0.5f);
-        float skin  = cc ? Mathf.Max(0.02f, cc.skinWidth) : 0.05f;
+        float skin = cc ? Mathf.Max(0.02f, cc.skinWidth) : 0.05f;
 
         float minY = floorY + halfH + skin + epsilon;
         float maxY = floorY + roomH - halfH - skin - epsilon;
@@ -46,24 +46,29 @@ public class PlayerRoomClamp : MonoBehaviour
         if (enableFreeVertical)
         {
             float v = 0f;
-            if (Input.GetKey(upKey))   v += 1f;
+            if (Input.GetKey(upKey)) v += 1f;
             if (Input.GetKey(downKey)) v -= 1f;
-            pos.y += v * verticalSpeed * Time.deltaTime;
+            if (Mathf.Abs(v) > 0f)
+            {
+                float dy = v * verticalSpeed * Time.deltaTime;
+                if (cc) cc.Move(Vector3.up * dy);
+                else pos.y += dy;
+            }
         }
 
-        // clamp vertical siempre
+        // Clamp final de Y
         pos.y = Mathf.Clamp(pos.y, minY, maxY);
 
-        // --- clamp XZ usando tu polígono/bounds ---
-        Vector3 clampedXZ = room.ClampWorldToInside(pos); // fija Y a floorY; restaura la Y calculada
-        clampedXZ.y = pos.y;
+        // --- clamp XZ con tu RoomSpace ---
+        Vector3 clampedXZ = room.ClampWorldToInside(pos); // este método tiende a fijar Y = floorY
+        clampedXZ.y = pos.y; // recupera la Y recién clampeada
 
         Vector3 delta = clampedXZ - transform.position;
-
         if (delta.sqrMagnitude > 1e-8f)
         {
-            if (cc) cc.Move(delta);    // suave si usas CharacterController
-            else    transform.position += delta;
+            if (cc) cc.Move(delta);
+            else transform.position += delta;
         }
+
     }
 }

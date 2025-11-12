@@ -15,6 +15,9 @@ public class FreeCameraController : MonoBehaviour
     public float panSpeedTouch = 1.2f;   // m/s
     public float pinchZoomSpeed = 2.0f;  // m/s
 
+    public float verticalTouchSpeed = 1.5f; // m/s al subir/bajar con 3 dedos
+
+
     [Header("Alturas (clamp vertical simple)")]
     [Tooltip("Altura de ojos respecto al piso.")]
     public float eyeHeight = 1.65f;
@@ -50,7 +53,10 @@ public class FreeCameraController : MonoBehaviour
         // Capsule “parada”: radio pequeño para pasar por esquinas sin atascar
         cc.radius = 0.2f;
         cc.height = Mathf.Max(eyeHeight, 0.5f);
-        cc.center = new Vector3(0f, cc.height * 0.5f, 0f);
+        cc.slopeLimit = 90f;
+        cc.stepOffset = 0f;
+        cc.skinWidth = 0.02f;
+        cc.center = new Vector3(0f, (cc.height * 0.5f) - eyeHeight, 0f);
         cc.stepOffset = 0.3f;   // subir pequeños bordes
         cc.minMoveDistance = 0f;
         cc.enableOverlapRecovery = true;
@@ -114,7 +120,7 @@ public class FreeCameraController : MonoBehaviour
 #elif UNITY_ANDROID || UNITY_IOS
         MobileInput();
 #endif
-        ClampVerticalInsideRoom();
+        //ClampVerticalInsideRoom();
     }
 
     // ------------------- PC -------------------
@@ -190,6 +196,22 @@ public class FreeCameraController : MonoBehaviour
                 transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
             }
         }
+        else if (Input.touchCount == 3)
+        {
+            var t1 = Input.GetTouch(0);
+            var t2 = Input.GetTouch(1);
+            var t3 = Input.GetTouch(2);
+
+            // Promedia el desplazamiento de los 3 dedos
+            Vector2 avgDelta = (t1.deltaPosition + t2.deltaPosition + t3.deltaPosition) / 3f;
+
+            // Arrastrar 3 dedos hacia arriba/abajo = subir/bajar
+            float dpi = Mathf.Max(1f, Screen.dpi);
+            Vector3 upMove = Vector3.up * (avgDelta.y / dpi) * verticalTouchSpeed;
+
+            cc.Move(upMove);
+        }
+
         else if (Input.touchCount == 2)
         {
             var t1 = Input.GetTouch(0);
@@ -216,19 +238,28 @@ public class FreeCameraController : MonoBehaviour
                 cc.Move(del);
             }
         }
+
     }
 
     // ------------------- LIMITE VERTICAL -------------------
     void ClampVerticalInsideRoom()
     {
-        // Mantén siempre la cámara entre piso+ojos y techo-clearance, ignorando gravedad
         Vector3 p = transform.position;
+
         float minY = floorY + eyeHeight;
-        float maxY = floorY + Mathf.Max(eyeHeight + 0.05f, roomHeight - headClearance);
+
+        // Usa la altura del JSON si es válida; si no, recurre al fallback
+        float topFromJson = roomHeight - headClearance;
+        if (topFromJson < eyeHeight + 0.05f)
+            topFromJson = roomHeightFallback - headClearance;
+
+        float maxY = floorY + Mathf.Max(eyeHeight + 0.05f, topFromJson);
+
         if (p.y < minY) p.y = minY;
         if (p.y > maxY) p.y = maxY;
         transform.position = p;
     }
+
 
     // ------------------- UI HELPERS -------------------
     bool PointerOverUIAt(Vector2 screenPos)
