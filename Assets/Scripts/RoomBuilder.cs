@@ -96,7 +96,38 @@ public class RoomBuilder : MonoBehaviour
 
         GetComponent<RoomVisualFallback>()?.ApplyFallbacks();
 
-        Debug.Log("[RoomBuilder] Renderización completada.");
+        var player = GameObject.FindWithTag("Player");
+        if (player != null && TryGetSpawnInside(out Vector3 p))
+        {
+            var cc = player.GetComponent<CharacterController>();
+            if (cc)
+            {
+                cc.enabled = false;
+
+                float floorY = FindFirstObjectByType<RoomSpace>()?.floorY ?? 0.05f;
+                float safeY = floorY + (cc.height * 0.5f) + cc.skinWidth + 0.02f;
+
+                var rb = FindFirstObjectByType<RoomBuilder>();
+                if (rb != null)
+                {
+                    float roomH = rb.RoomHeightMeters;
+                    float maxY = floorY + roomH - (cc.height * 0.5f) - 0.02f;
+                    safeY = Mathf.Min(safeY, maxY);
+                }
+
+                player.transform.position = new Vector3(p.x, safeY, p.z);
+                player.transform.rotation = Quaternion.identity;
+
+                cc.enabled = true;
+            }
+            else
+            {
+                float floorY = FindFirstObjectByType<RoomSpace>()?.floorY ?? 0.05f;
+                float eyeHeight = 1.6f;
+                player.transform.position = new Vector3(p.x, floorY + eyeHeight, p.z);
+                player.transform.rotation = Quaternion.identity;
+            }
+        }
     }
 
     public bool TryGetSpawnInside(out Vector3 worldPoint)
@@ -290,52 +321,43 @@ public class RoomBuilder : MonoBehaviour
 
 public static class MatTuning
 {
-    /// Ajusta materiales URP para asegurar correcta iluminación, sin alterar su tipo (metal/no metal).
     public static void MakeURPLitClean(Material m)
     {
         if (m == null) return;
 
-        // Asegura que use el shader URP/Lit
         if (m.shader == null || m.shader.name.Contains("Standard"))
             m.shader = Shader.Find("Universal Render Pipeline/Lit");
 
-        // Corrige color base / tinte
         if (m.HasProperty("_BaseColor"))
         {
             var baseCol = m.GetColor("_BaseColor");
-            baseCol.a = 1f; // fuerza opacidad
+            baseCol.a = 1f;
             m.SetColor("_BaseColor", baseCol);
         }
 
-        // Elimina color azul por reflexiones ambientales
         if (m.HasProperty("_EnvironmentReflections"))
-            m.SetFloat("_EnvironmentReflections", 0.85f); // no las elimina, las atenúa
+            m.SetFloat("_EnvironmentReflections", 0.85f);
 
-        // Controla brillo general (sin eliminarlo)
         if (m.HasProperty("_Smoothness"))
         {
             float sm = m.GetFloat("_Smoothness");
-            if (sm > 0.8f) m.SetFloat("_Smoothness", 0.65f); // evita reflejo tipo “cielo cromado”
+            if (sm > 0.8f) m.SetFloat("_Smoothness", 0.65f);
         }
 
-        // Mantén el Metallic original si existe mapa
-        // (solo reduce si el valor era un default alto sin mapa)
         if (m.HasProperty("_MetallicGlossMap"))
         {
             var tex = m.GetTexture("_MetallicGlossMap");
             if (tex == null && m.HasProperty("_Metallic"))
             {
                 float met = m.GetFloat("_Metallic");
-                if (met > 0.9f) m.SetFloat("_Metallic", 0.5f); // modera
+                if (met > 0.9f) m.SetFloat("_Metallic", 0.5f);
             }
         }
 
-        // Doble cara (útil para paredes o pisos delgados)
         if (m.HasProperty("_Cull")) m.SetFloat("_Cull", 0f);
         if (m.HasProperty("_CullMode")) m.SetFloat("_CullMode", 0f);
         if (m.HasProperty("_DoubleSidedEnable")) m.SetFloat("_DoubleSidedEnable", 1f);
 
-        // Forzar modo opaco (sin transparencias accidentales)
         if (m.HasProperty("_Surface")) m.SetFloat("_Surface", 0f);
     }
 }

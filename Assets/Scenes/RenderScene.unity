@@ -628,9 +628,10 @@ GameObject:
   - component: {fileID: 1057308860}
   - component: {fileID: 1057308859}
   - component: {fileID: 1057308861}
+  - component: {fileID: 1057308862}
   m_Layer: 0
   m_Name: Main Camera
-  m_TagString: MainCamera
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -804,7 +805,28 @@ CharacterController:
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Center: {x: 0, y: 1, z: 0}
+--- !u!114 &1057308862
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1057308855}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b2cdb14f2448b54e945162a25061dd2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  room: {fileID: 893664012}
+  builder: {fileID: 1781436037}
+  cc: {fileID: 1057308861}
+  enableFreeVertical: 1
+  verticalSpeed: 2
+  upKey: 32
+  downKey: 306
+  eyeHeightIfNoCC: 1.6
+  epsilon: 0.002
 --- !u!1 &1164014486
 GameObject:
   m_ObjectHideFlags: 0
