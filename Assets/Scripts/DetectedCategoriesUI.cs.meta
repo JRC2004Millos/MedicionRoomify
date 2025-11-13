@@ -1,2 +1,16 @@
 fileFormatVersion: 2
 guid: f16fb720cef5a4837955fe15ae9c6a83
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - categoriesContent: {instanceID: 0}
+  - categoryButtonPrefab: {instanceID: 0}
+  - catalogLoader: {instanceID: 0}
+  - confirmButton: {fileID: 1475644385863718904, guid: dc525e32b184db543a55645de2658597,
+      type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

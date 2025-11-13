@@ -29,7 +29,7 @@ public class RoomDropPlacer : MonoBehaviour
     [SerializeField] float maxFootprintPct = 0.45f;
 
     [Header("Real-world scale")]
-    [SerializeField] bool useRealisticScale = true;   // activa escalado realista por categoría
+    [SerializeField] bool useRealisticScale = true;
 
     void Reset()
     {
@@ -43,7 +43,6 @@ public class RoomDropPlacer : MonoBehaviour
         spawned = null;
         if (!sceneCamera || !roomSpace || !prefab) return false;
 
-        // 1) Intersección pantalla → plano de piso
         var floorY = roomSpace.floorY;
         var plane = new Plane(Vector3.up, new Vector3(0f, floorY, 0f));
         var ray = sceneCamera.ScreenPointToRay(screenPos);
@@ -53,18 +52,14 @@ public class RoomDropPlacer : MonoBehaviour
 
         var worldPos = ray.GetPoint(dist);
 
-        // 2) Clamp a bounds (XZ)
         if (clampToBounds)
             worldPos = roomSpace.ClampWorldToInside(worldPos);
 
-        // 3) Instanciar bajo RoomRoot
         spawned = Instantiate(prefab, parentRoot ? parentRoot : transform);
         spawned.transform.position = worldPos;
 
-        // 4) Rotación “saludable”
         Quaternion rot = Quaternion.identity;
 
-        // a) rumbo (yaw): cámara o cuarto
         Vector3 fwd = alignToRoomForward ? roomSpace.transform.forward : sceneCamera.transform.forward;
         fwd.y = 0f;
         if (fwd.sqrMagnitude < 1e-4f) fwd = Vector3.forward;
@@ -75,38 +70,37 @@ public class RoomDropPlacer : MonoBehaviour
 
         rot = Quaternion.Euler(0f, yaw, 0f);
 
-        // b) “de pie”
         if (keepUpright)
         {
-            // zereamos pitch/roll manteniendo yaw
             Vector3 e = rot.eulerAngles;
             rot = Quaternion.Euler(0f, e.y, 0f);
         }
 
-        // c) offset por modelos .OBJ (si vienen acostados 90°)
         if (rotationOffsetEuler != Vector3.zero)
             rot = rot * Quaternion.Euler(rotationOffsetEuler);
 
         spawned.transform.rotation = rot;
 
         if (useRealisticScale)
-            ScaleToTargetHeight(spawned, GetTargetHeightM(spawned.name)); // por nombre prefijo/categoría
+            ScaleToTargetHeight(spawned, GetTargetHeightM(spawned.name));
 
         if (autoScale)
-            AutoScaleToRoom(spawned); // tu límite de huella del cuarto (déjalo)
+            AutoScaleToRoom(spawned);
 
+        EnsureCollider(spawned);
+        if (!spawned.GetComponentInChildren<Collider>())
+            Debug.LogWarning($"Sin collider: {spawned.name}");
 
-        // 5) Apoyar base exacta al piso (usa Renderer.bounds)
         AlignBaseToFloor(spawned, floorY);
 
-        // 6) Snap opcional
         if (enableSnap)
             spawned.transform.position = SnapXZ(spawned.transform.position, gridSnap);
 
         // 7) Empujar fuera de paredes si quedó tocándolas
-        if (ResolveWallPenetration(spawned, wallMask))
+        if (ResolveWallPenetration(spawned, wallMask, 0.05f, 15))
         {
-            // Reafirma Y exacta sobre el piso, por si el empuje movió algo verticalmente
+            Debug.Log($"Empujado {spawned.name} fuera de pared");
+            spawned.transform.position = roomSpace.ClampWorldToInside(spawned.transform.position);
             AlignBaseToFloor(spawned, floorY);
         }
 
@@ -255,77 +249,60 @@ public class RoomDropPlacer : MonoBehaviour
         if (s < 0.999f)
         {
             go.transform.localScale *= s;
-            // No hace falta recomputar bounds aquí; AlignBaseToFloor lo hará luego
         }
     }
 
-    // Altura objetivo por tipo (m). Usa keywords en español/inglés.
     float GetTargetHeightM(string prefabName)
     {
         string n = prefabName.ToLowerInvariant();
 
-        // Silla
         if (n.Contains("silla") || n.Contains("chair"))
-            return 0.9f; // alto total aprox. respaldo
+            return 0.9f;
 
-        // Mesa/escritorio
         if (n.Contains("mesa") || n.Contains("table") || n.Contains("desk"))
             return 0.75f;
 
-        // Sofá
         if (n.Contains("sofa") || n.Contains("sofá") || n.Contains("couch"))
             return 0.85f;
 
-        // Monitor (con base)
         if (n.Contains("monitor") || n.Contains("screen"))
             return 0.45f;
 
-        // Teclado/mouse (bajitos para no desaparecer)
         if (n.Contains("keyboard") || n.Contains("teclado"))
             return 0.04f;
         if (n.Contains("mouse"))
             return 0.04f;
 
-        // Lámpara: si dice “desk” asumimos de escritorio, si no, de piso
         if (n.Contains("lamp") || n.Contains("lampara") || n.Contains("lámpara"))
             return n.Contains("desk") ? 0.5f : 1.6f;
 
-        // PC torre/laptop (altura dominante de la pieza)
         if (n.Contains("pc") || n.Contains("computer"))
             return 0.45f;
         if (n.Contains("laptop"))
             return 0.025f;
 
-        // Genérico muebles
         if (n.Contains("furniture"))
             return 0.8f;
 
-        // fallback
         return Mathf.Clamp(maxHeightM * 0.6f, 0.4f, 1.2f);
     }
 
-    // Escala uniforme para que la altura del bounds = targetHeight (mantiene proporciones)
     void ScaleToTargetHeight(GameObject go, float targetHeightM)
     {
-        var b = GetCombinedBounds(go);  // tu helper que ya calcula bounds por Renderers/Colliders
+        var b = GetCombinedBounds(go);
         if (b.size.y < 1e-4f) return;
 
         float s = targetHeightM / b.size.y;
-        // evita escalas absurdas (x1000 / x0.001)
         s = Mathf.Clamp(s, 0.02f, 50f);
 
         if (Mathf.Abs(s - 1f) > 1e-3f)
         {
             go.transform.localScale *= s;
-            // opcional: recomputar bounds si luego necesitas ajustes adicionales
-            // b = GetCombinedBounds(go);
         }
     }
 
     bool ResolveWallPenetration(GameObject go, LayerMask wallsMask, float extra = 0.002f, int maxIters = 5)
     {
-        // Asegúrate de que lo que colocas tenga al menos un Collider;
-        // si no, puedes añadir temporalmente un BoxCollider con los bounds.
         var myCols = go.GetComponentsInChildren<Collider>();
         if (myCols == null || myCols.Length == 0) return false;
 
@@ -337,16 +314,17 @@ public class RoomDropPlacer : MonoBehaviour
 
             foreach (var myCol in myCols)
             {
-                // Volumen de búsqueda aproximado del collider
                 var b = myCol.bounds;
                 var hits = Physics.OverlapBox(
-                    b.center, b.extents + Vector3.one * 0.001f,
-                    go.transform.rotation, wallsMask,
-                    QueryTriggerInteraction.Ignore);
+                    b.center,
+                    b.extents + Vector3.one * 0.001f,
+                    Quaternion.identity,
+                    wallsMask,
+                    QueryTriggerInteraction.Ignore
+                );
 
                 foreach (var other in hits)
                 {
-                    // Evitar contarse a sí mismo
                     if (other.transform.root == go.transform.root) continue;
 
                     if (Physics.ComputePenetration(
@@ -354,7 +332,6 @@ public class RoomDropPlacer : MonoBehaviour
                         other, other.transform.position, other.transform.rotation,
                         out Vector3 dir, out float dist))
                     {
-                        // Mover en la dirección mínima que elimina la intersección
                         go.transform.position += dir * (dist + extra);
                         moved = true;
                         anyPenetration = true;
@@ -362,9 +339,29 @@ public class RoomDropPlacer : MonoBehaviour
                 }
             }
 
-            if (!anyPenetration) break; // ya no está penetrando nada
+            if (!anyPenetration) break;
         }
 
         return moved;
+    }
+
+    void EnsureCollider(GameObject go)
+    {
+        if (go.GetComponentInChildren<Collider>()) return;
+
+        var rends = go.GetComponentsInChildren<Renderer>(true);
+        if (rends.Length == 0) { go.AddComponent<BoxCollider>(); return; }
+
+        Bounds b = rends[0].bounds;
+        for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+
+        var bc = go.AddComponent<BoxCollider>();
+        bc.center = go.transform.InverseTransformPoint(b.center);
+        Vector3 sx = go.transform.InverseTransformVector(new Vector3(b.size.x, 0, 0));
+        Vector3 sy = go.transform.InverseTransformVector(new Vector3(0, b.size.y, 0));
+        Vector3 sz = go.transform.InverseTransformVector(new Vector3(0, 0, b.size.z));
+        bc.size = new Vector3(Mathf.Abs(sx.x) + Mathf.Abs(sx.y) + Mathf.Abs(sx.z),
+                              Mathf.Abs(sy.x) + Mathf.Abs(sy.y) + Mathf.Abs(sy.z),
+                              Mathf.Abs(sz.x) + Mathf.Abs(sz.y) + Mathf.Abs(sz.z));
     }
 }
