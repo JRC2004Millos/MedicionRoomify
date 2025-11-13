@@ -66,7 +66,8 @@ public class RoomDropPlacer : MonoBehaviour
 
         // a) rumbo (yaw): cámara o cuarto
         Vector3 fwd = alignToRoomForward ? roomSpace.transform.forward : sceneCamera.transform.forward;
-        fwd.y = 0f; if (fwd.sqrMagnitude < 1e-4f) fwd = Vector3.forward;
+        fwd.y = 0f;
+        if (fwd.sqrMagnitude < 1e-4f) fwd = Vector3.forward;
         fwd.Normalize();
 
         float yaw = Mathf.Atan2(fwd.x, fwd.z) * Mathf.Rad2Deg;
@@ -102,12 +103,50 @@ public class RoomDropPlacer : MonoBehaviour
         if (enableSnap)
             spawned.transform.position = SnapXZ(spawned.transform.position, gridSnap);
 
-
         // 7) Empujar fuera de paredes si quedó tocándolas
         if (ResolveWallPenetration(spawned, wallMask))
         {
             // Reafirma Y exacta sobre el piso, por si el empuje movió algo verticalmente
             AlignBaseToFloor(spawned, floorY);
+        }
+
+        // 8) 🔴 NUEVO: asegurar que el mueble sea interactuable + collider real
+        {
+            // a) capa Furniture en todo el árbol
+            int furnLayer = LayerMask.NameToLayer("Furniture");
+            if (furnLayer >= 0)
+            {
+                foreach (Transform t in spawned.GetComponentsInChildren<Transform>(true))
+                    t.gameObject.layer = furnLayer;
+            }
+
+            // b) script FurnitureInteractable en la raíz
+            var fi = spawned.GetComponent<FurnitureInteractable>();
+            if (!fi)
+                fi = spawned.gameObject.AddComponent<FurnitureInteractable>();
+
+            // (opcional) si quieres, usa el nombre del prefab como id por defecto
+            if (string.IsNullOrEmpty(fi.furnitureId))
+                fi.furnitureId = prefab.name;
+
+            // c) collider funcional: MeshCollider con mesh asignado
+            MeshCollider mc = spawned.GetComponent<MeshCollider>();
+            if (!mc)
+                mc = spawned.gameObject.AddComponent<MeshCollider>();
+
+            if (mc.sharedMesh == null)
+            {
+                // busca un MeshFilter en hijos (suele estar ahí)
+                MeshFilter mf = spawned.GetComponentInChildren<MeshFilter>();
+                if (mf && mf.sharedMesh != null)
+                {
+                    mc.sharedMesh = mf.sharedMesh;
+                }
+                else
+                {
+                    Debug.LogWarning($"[RoomDropPlacer] No se encontró MeshFilter para {spawned.name}");
+                }
+            }
         }
 
         return true;
