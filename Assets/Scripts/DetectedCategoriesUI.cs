@@ -45,7 +45,7 @@ public class DetectedCategoriesUI : MonoBehaviour
     };
 
     [SerializeField] private Button ConfirmButton;
-
+    public static bool HasConfirmedAtLeastOnce = false;
     private bool _showingDetectedOnly = true;
 
     private void EnsureConfirmButtonAtStart()
@@ -155,7 +155,6 @@ public class DetectedCategoriesUI : MonoBehaviour
 
     private void Awake()
     {
-        // --- Reasignar SIEMPRE el ConfirmButton en el clon ---
         ConfirmButton = null;
 
         foreach (var b in GetComponentsInChildren<Button>(true))
@@ -188,10 +187,8 @@ public class DetectedCategoriesUI : MonoBehaviour
         }
     }
 
-    private void OnConfirmClicked()
+    public void ForceFullCatalogMode()
     {
-        if (!_showingDetectedOnly) return;
-
         _showingDetectedOnly = false;
         BuildAllCategoriesBar();
 
@@ -207,6 +204,13 @@ public class DetectedCategoriesUI : MonoBehaviour
 
             toggleBarButton.gameObject.SetActive(true);
         }
+    }
+
+    public void OnConfirmClicked()
+    {
+        Debug.Log("[DetectedCategoriesUI] Confirmar pulsado");
+        HasConfirmedAtLeastOnce = true;
+        ForceFullCatalogMode();
     }
 
     private void BuildAllCategoriesBar()

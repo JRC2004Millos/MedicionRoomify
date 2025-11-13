@@ -243,6 +243,12 @@ public class CategoryItemsLoader : MonoBehaviour
         var cats = Instantiate(categoriesUIPrefab, content);
         cats.name = "DetectedCategoriesUI";
 
+        var det = cats.GetComponent<DetectedCategoriesUI>();
+        if (det != null && DetectedCategoriesUI.HasConfirmedAtLeastOnce)
+        {
+            det.ForceFullCatalogMode();
+        }
+
         OnCategoriesShown?.Invoke();
     }
 
