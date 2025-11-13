@@ -17,6 +17,8 @@ public class FreeCameraController : MonoBehaviour
 
     public float verticalTouchSpeed = 1.5f; // m/s al subir/bajar con 3 dedos
 
+    [Header("Input")]
+    public bool inputEnabled = true;
 
     [Header("Alturas (clamp vertical simple)")]
     [Tooltip("Altura de ojos respecto al piso.")]
@@ -118,9 +120,9 @@ public class FreeCameraController : MonoBehaviour
         DesktopLook();
         DesktopMove();
 #elif UNITY_ANDROID || UNITY_IOS
-        MobileInput();
+    if (!inputEnabled) return;
+    MobileInput();
 #endif
-        //ClampVerticalInsideRoom();
     }
 
     // ------------------- PC -------------------
@@ -396,5 +398,15 @@ public class FreeCameraController : MonoBehaviour
         bool was2 = cc.enabled; cc.enabled = false;
         transform.position = pos2;
         cc.enabled = was2;
+    }
+
+    public void SetInputEnabled(bool enabled)
+    {
+        inputEnabled = enabled;
+
+        if (!enabled)
+        {
+            blockFromUIUntilAllReleased = false;
+        }
     }
 }

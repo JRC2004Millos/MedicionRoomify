@@ -271,8 +271,16 @@ public class FurnitureInteractionController : MonoBehaviour
 
     void OnRotate()
     {
-        // Lo de rotar lo puedes completar luego,
-        // aquí simplemente cerramos el menú por ahora
+        if (current == null) return;
+
+        var gizmo = current.gameObject.AddComponent<FurnitureMoveGizmo>();
+        gizmo.allowRotate = true;
+
+        gizmo.BeginRotation(cam, (fi) =>
+        {
+            SaveFurniturePose(fi);
+        });
+
         HideContextMenu();
     }
 

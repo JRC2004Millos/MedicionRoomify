@@ -16,11 +16,17 @@ public class FurnitureMoveGizmo : MonoBehaviour
     private bool moving = false;
     private bool rotating = false;
     private Action<FurnitureInteractable> onFinishCb;
+    private FreeCameraController camController;
 
     public void Begin(Camera c, Action<FurnitureInteractable> onFinish)
     {
         fi = GetComponent<FurnitureInteractable>();
         cam = c ? c : Camera.main;
+
+        // 🔹 Buscar el controlador de cámara en el padre de la cámara
+        camController = cam ? cam.GetComponentInParent<FreeCameraController>() : null;
+        if (camController != null)
+            camController.SetInputEnabled(false);
 
         // plano horizontal a la altura actual del mueble
         float y = transform.position.y;
@@ -39,17 +45,24 @@ public class FurnitureMoveGizmo : MonoBehaviour
         cam = c;
         onFinishCb = onFinish;
 
+        camController = cam ? cam.GetComponentInParent<FreeCameraController>() : null;
+        if (camController != null)
+            camController.SetInputEnabled(false);
+
         moving = false;
         rotating = true;
     }
 
     void Update()
     {
-        if (!moving) return;
-        HandleTouch();
+        if (moving)
+            HandleTouchMove();
+
+        if (rotating)
+            HandleTouchRotate();
     }
 
-    void HandleTouch()
+    void HandleTouchMove()
     {
         if (Input.touchCount == 0) return;
 
@@ -106,6 +119,41 @@ public class FurnitureMoveGizmo : MonoBehaviour
     {
         moving = false;
         onFinishCb?.Invoke(fi);
+
+        if (camController != null)
+            camController.SetInputEnabled(true);    // ✅ volver a activar cámara
+
         Destroy(this); // componente efímero para cada edición
+    }
+
+    void HandleTouchRotate()
+    {
+        if (Input.touchCount < 2) return;
+
+        Touch t1 = Input.GetTouch(0);
+        Touch t2 = Input.GetTouch(1);
+
+        float avgDx = (t1.deltaPosition.x + t2.deltaPosition.x) * 0.5f;
+        transform.Rotate(Vector3.up, avgDx * rotateSpeed, Space.World);
+
+        if (t1.phase == TouchPhase.Ended || t2.phase == TouchPhase.Ended)
+            FinishRotation();
+    }
+
+    void FinishRotation()
+    {
+        rotating = false;
+        onFinishCb?.Invoke(fi);
+
+        if (camController != null)
+            camController.SetInputEnabled(true);
+
+        Destroy(this);
+    }
+
+    void OnDestroy()
+    {
+        if (camController != null)
+            camController.SetInputEnabled(true);
     }
 }
