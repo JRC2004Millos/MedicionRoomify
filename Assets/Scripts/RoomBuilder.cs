@@ -13,7 +13,7 @@ public class RoomBuilder : MonoBehaviour
 
     [Header("Opciones de render")]
     [Tooltip("Espesor de los muros en metros.")]
-    public float wallThickness = 0.05f;
+    public float wallThickness = 0.1f;
     [Tooltip("Material para el piso (fallback).")]
     public Material floorMaterial;
     [Tooltip("Material para los muros (fallback).")]
@@ -271,6 +271,7 @@ public class RoomBuilder : MonoBehaviour
 
             var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
             wall.name = $"Wall_{w.from}_{w.to}";
+            wall.layer = LayerMask.NameToLayer("RoomWall");
             wall.transform.SetParent(this.transform, true);
             wall.transform.position = mid + Vector3.up * (floorBaseY + height * 0.5f);
             wall.transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
