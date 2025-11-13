@@ -111,6 +111,7 @@ public class RoomDropPlacer : MonoBehaviour
         }
 
         // 8) 🔴 NUEVO: asegurar que el mueble sea interactuable + collider real
+        // 8) asegurar que el mueble sea interactuable + collider usable en móvil
         {
             // a) capa Furniture en todo el árbol
             int furnLayer = LayerMask.NameToLayer("Furniture");
@@ -125,29 +126,44 @@ public class RoomDropPlacer : MonoBehaviour
             if (!fi)
                 fi = spawned.gameObject.AddComponent<FurnitureInteractable>();
 
-            // (opcional) si quieres, usa el nombre del prefab como id por defecto
             if (string.IsNullOrEmpty(fi.furnitureId))
                 fi.furnitureId = prefab.name;
 
-            // c) collider funcional: MeshCollider con mesh asignado
-            MeshCollider mc = spawned.GetComponent<MeshCollider>();
-            if (!mc)
-                mc = spawned.gameObject.AddComponent<MeshCollider>();
-
-            if (mc.sharedMesh == null)
+            // c) Collider: NO usar MeshCollider, preferir BoxCollider
+            //    1. Si ya hay algún Collider en el prefab, lo dejamos.
+            //    2. Si no hay ninguno, creamos un BoxCollider ajustado al Renderer principal.
+            var existingColliders = spawned.GetComponentsInChildren<Collider>(true);
+            if (existingColliders == null || existingColliders.Length == 0)
             {
-                // busca un MeshFilter en hijos (suele estar ahí)
-                MeshFilter mf = spawned.GetComponentInChildren<MeshFilter>();
-                if (mf && mf.sharedMesh != null)
+                // Buscar un renderer para estimar el tamaño
+                Renderer rend = spawned.GetComponentInChildren<Renderer>();
+                if (rend != null)
                 {
-                    mc.sharedMesh = mf.sharedMesh;
+                    Bounds b = rend.bounds;
+
+                    BoxCollider box = spawned.AddComponent<BoxCollider>();
+
+                    // center en coords locales
+                    box.center = spawned.transform.InverseTransformPoint(b.center);
+
+                    // convertir tamaño de world a local usando la escala
+                    Vector3 sizeWorld = b.size;
+                    Vector3 lossy = spawned.transform.lossyScale;
+                    Vector3 sizeLocal = new Vector3(
+                        lossy.x != 0 ? sizeWorld.x / lossy.x : sizeWorld.x,
+                        lossy.y != 0 ? sizeWorld.y / lossy.y : sizeWorld.y,
+                        lossy.z != 0 ? sizeWorld.z / lossy.z : sizeWorld.z
+                    );
+                    box.size = sizeLocal;
                 }
                 else
                 {
-                    Debug.LogWarning($"[RoomDropPlacer] No se encontró MeshFilter para {spawned.name}");
+                    // Fallback muy simple si no hay renderer
+                    spawned.AddComponent<BoxCollider>();
                 }
             }
         }
+
 
         return true;
     }

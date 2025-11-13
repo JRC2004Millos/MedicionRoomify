@@ -14,6 +14,13 @@ public class ObjectPlacer : MonoBehaviour
     [SerializeField] private Color validColor = new Color(0, 1, 0, 0.5f);
     [SerializeField] private Color invalidColor = new Color(1, 1, 0, 0.5f);
 
+    [Header("Furniture Settings")]
+    [Tooltip("Nombre de la capa donde deben quedar los muebles colocados")]
+    [SerializeField] private string furnitureLayerName = "Furniture";
+
+    [Tooltip("Si está activo, obliga a que el mueble tenga al menos un BoxCollider")]
+    [SerializeField] private bool forceBoxCollider = true;
+
     // Estado actual
     private GameObject currentPrefab;
     private GameObject previewObject;
@@ -114,7 +121,7 @@ public class ObjectPlacer : MonoBehaviour
         // Hacer semi-transparente
         MakeTransparent(previewObject, validColor);
 
-        // Desactivar colisiones
+        // Desactivar colisiones en el preview
         var colliders = previewObject.GetComponentsInChildren<Collider>();
         foreach (var col in colliders)
             col.enabled = false;
@@ -168,11 +175,66 @@ public class ObjectPlacer : MonoBehaviour
         GameObject placedObject = Instantiate(currentPrefab, lastValidPosition, lastValidRotation);
         placedObject.name = currentPrefab.name;
 
-        // Opcional: añadir tag o componente para identificarlo después
-        // placedObject.tag = "PlacedObject";
+        // Ajustar colliders y capa para interacción con muebles
+        SetupPlacedFurniture(placedObject);
 
         // Salir del modo colocación
         CancelPlacement();
+    }
+
+    /// <summary>
+    /// Configura el objeto colocado para que funcione bien con interacción:
+    /// - Lo pone en la capa Furniture (si existe)
+    /// - Elimina MeshCollider (evita problemas de mallas no accesibles)
+    /// - Se asegura de que haya al menos un BoxCollider
+    /// </summary>
+    void SetupPlacedFurniture(GameObject root)
+    {
+        // 1. Poner en capa Furniture (si existe)
+        int furnitureLayer = LayerMask.NameToLayer(furnitureLayerName);
+        if (furnitureLayer != -1)
+        {
+            SetLayerRecursively(root, furnitureLayer);
+        }
+
+        // 2. Eliminar MeshColliders (para evitar collisionmeshdata con mallas no read/write)
+        var meshColliders = root.GetComponentsInChildren<MeshCollider>(true);
+        foreach (var mc in meshColliders)
+        {
+            Destroy(mc);
+        }
+
+        // 3. Asegurarse de que haya al menos un Collider
+        if (forceBoxCollider)
+        {
+            var allColliders = root.GetComponentsInChildren<Collider>(true);
+            if (allColliders == null || allColliders.Length == 0)
+            {
+                // Crear un BoxCollider ajustado al Renderer principal
+                var rend = root.GetComponentInChildren<Renderer>();
+                if (rend != null)
+                {
+                    Bounds b = rend.bounds;
+                    BoxCollider box = root.AddComponent<BoxCollider>();
+                    box.center = root.transform.InverseTransformPoint(b.center);
+                    box.size = b.size;
+                }
+                else
+                {
+                    // fallback: collider unitario en el root
+                    root.AddComponent<BoxCollider>();
+                }
+            }
+        }
+    }
+
+    void SetLayerRecursively(GameObject obj, int layer)
+    {
+        obj.layer = layer;
+        foreach (Transform child in obj.transform)
+        {
+            SetLayerRecursively(child.gameObject, layer);
+        }
     }
 
     void MakeTransparent(GameObject obj, Color color)

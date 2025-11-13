@@ -102,7 +102,6 @@ public class FurnitureInteractionController : MonoBehaviour
     }
     #endregion
 
-    #region INPUT TOUCH (Android / iOS)
     void HandleTouchInput()
     {
         if (Input.touchCount == 0)
@@ -114,7 +113,6 @@ public class FurnitureInteractionController : MonoBehaviour
             return;
         }
 
-        // Tomamos el primer touch relevante
         for (int i = 0; i < Input.touchCount; i++)
         {
             Touch t = Input.GetTouch(i);
@@ -122,11 +120,12 @@ public class FurnitureInteractionController : MonoBehaviour
             // Si aún no tenemos dedo activo, tomamos uno cuando empiece
             if (activeFingerId == -1 && t.phase == TouchPhase.Began)
             {
-                // Evitar si empezó sobre UI
+                // Evitar si empezó sobre UI (Input System nuevo)
                 if (EventSystem.current != null &&
-                    EventSystem.current.IsPointerOverGameObject(t.fingerId))
+                    EventSystem.current.IsPointerOverGameObject())
                 {
-                    return;
+                    // ignoramos este toque y seguimos con otros
+                    continue;
                 }
 
                 activeFingerId = t.fingerId;
@@ -134,12 +133,15 @@ public class FurnitureInteractionController : MonoBehaviour
                 longPressTriggered = false;
                 pressStartTime = Time.unscaledTime;
                 pressStartPos = t.position;
-                return;
+                continue;
             }
 
             // Si este no es el dedo activo, lo ignoramos
             if (t.fingerId != activeFingerId)
                 continue;
+
+            float dtMs = (Time.unscaledTime - pressStartTime) * 1000f;
+            float dist = Vector2.Distance(pressStartPos, t.position);
 
             switch (t.phase)
             {
@@ -147,19 +149,17 @@ public class FurnitureInteractionController : MonoBehaviour
                 case TouchPhase.Stationary:
                     {
                         if (!isPressing || longPressTriggered)
-                            return;
+                            break;
 
-                        float dtMs = (Time.unscaledTime - pressStartTime) * 1000f;
-                        float dist = Vector2.Distance(pressStartPos, t.position);
-
+                        // Si se mueve más de la tolerancia, cancelamos el long-press
                         if (dist > touchMoveTolerancePx)
                         {
-                            // Se movió demasiado, cancelamos el long-press
                             isPressing = false;
                             activeFingerId = -1;
-                            return;
+                            break;
                         }
 
+                        // Aquí es donde realmente “holdear” dispara la selección
                         if (dtMs >= longPressMs)
                         {
                             longPressTriggered = true;
@@ -167,9 +167,11 @@ public class FurnitureInteractionController : MonoBehaviour
                         }
                         break;
                     }
+
                 case TouchPhase.Ended:
                 case TouchPhase.Canceled:
                     {
+                        // Si levantó el dedo antes del long-press -> no hace nada
                         isPressing = false;
                         longPressTriggered = false;
                         activeFingerId = -1;
@@ -178,7 +180,8 @@ public class FurnitureInteractionController : MonoBehaviour
             }
         }
     }
-    #endregion
+
+
 
     #region SELECCIÓN Y MENÚ
     void TrySelectAtScreenPos(Vector2 screenPos)
