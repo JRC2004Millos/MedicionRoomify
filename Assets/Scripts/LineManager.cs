@@ -10,39 +10,35 @@ public class LineManager : MonoBehaviour
     public ARPlacementController placementController;
     public TextMeshProUGUI debugText;
     public TextMeshProUGUI TxtEstado;
-    public TextMeshPro mText; // prefab TMP (WorldSpace)
+    public TextMeshPro mText;
     private bool _exportando = false;
 
     public InstructionHUD hud;
 
-    // --- Estado general ---
-    private List<Vector3> placedPositions = new List<Vector3>(); // piso (Vector3 para dibujar)
-    private List<Corner> corners = new List<Corner>();           // piso (cada corner -> Vector2 (x,z))
+    private List<Vector3> placedPositions = new List<Vector3>();
+    private List<Corner> corners = new List<Corner>();
     private char currentCornerId = 'A';
 
     public enum ModoMedicion { Altura, Piso }
     public ModoMedicion modoActual = ModoMedicion.Altura;
 
-    // --- Altura ---
-    private List<Vector3> puntosAltura = new List<Vector3>(); // 0..2
+    private List<Vector3> puntosAltura = new List<Vector3>();
     private float alturaMedida = 2.8f;
 
-    // --- “Desde última confirmación” (para BtnEliminar) ---
     private int placedPositionsAtConfirm = 0;
     private int cornersAtConfirm = 0;
     private char cornerIdAtConfirm = 'A';
-    private List<GameObject> visualsSinceConfirm = new List<GameObject>(); // textos, líneas temporales, etc.
+    private List<GameObject> visualsSinceConfirm = new List<GameObject>();
 
     void Start()
     {
         if (placementController != null)
             placementController.OnObjectPlaced += DrawLine;
 
-        // Mensaje inicial
         TxtEstado?.SetText("Paso 1: Marca dos puntos para medir la altura. Luego confirma.");
         debugText?.SetText("Modo: Altura");
         hud?.SetModeAltura();
-        SnapshotAtConfirm(); // snapshot “vacío” al inicio
+        SnapshotAtConfirm();
     }
 
     void OnDestroy()
@@ -51,20 +47,15 @@ public class LineManager : MonoBehaviour
             placementController.OnObjectPlaced -= DrawLine;
     }
 
-    // -----------------------
-    // Entrada principal (tap)
-    // -----------------------
     void DrawLine(Vector3 newPoint)
     {
         if (modoActual == ModoMedicion.Altura)
         {
-            // Asegurar flujo limpio en altura
             if (puntosAltura.Count == 0)
                 ClearVisualsSinceConfirm();
 
             if (puntosAltura.Count >= 2)
             {
-                // Ignora taps extra hasta que confirme o elimine
                 TxtEstado?.SetText("Ya marcaste 2 puntos de altura. Presiona Confirmar o Eliminar.");
                 return;
             }
@@ -82,7 +73,6 @@ public class LineManager : MonoBehaviour
                 alturaMedida = altura;
                 debugText?.SetText($"Altura medida: {(altura * 100f):F1} cm");
 
-                // Línea temporal de altura
                 var go = new GameObject("AlturaLine");
                 var lr = go.AddComponent<LineRenderer>();
                 lr.material = lineRenderer.material;
@@ -92,7 +82,6 @@ public class LineManager : MonoBehaviour
                 lr.SetPosition(1, puntosAltura[1]);
                 visualsSinceConfirm.Add(go);
 
-                // Texto de altura
                 TextMeshPro distText = Instantiate(mText);
                 distText.text = $"{(altura * 100f):F1} cm";
                 Vector3 mid = (puntosAltura[0] + puntosAltura[1]) * 0.5f + Vector3.right * 0.05f;
@@ -107,7 +96,6 @@ public class LineManager : MonoBehaviour
             return;
         }
 
-        // ----- Modo Piso -----
         placedPositions.Add(newPoint);
         debugText?.SetText($"Punto añadido: {newPoint}");
         hud?.OnFloorPointsChanged(placedPositions.Count);
@@ -115,7 +103,6 @@ public class LineManager : MonoBehaviour
         corners.Add(new Corner(currentCornerId.ToString(), newPoint));
         currentCornerId++;
 
-        // dibujar último punto
         lineRenderer.positionCount++;
         lineRenderer.SetPosition(lineRenderer.positionCount - 1, newPoint);
 
@@ -143,9 +130,6 @@ public class LineManager : MonoBehaviour
         }
     }
 
-    // -----------------------
-    // Botón: Confirmar
-    // -----------------------
     public void OnBtnConfirmar()
     {
         if (modoActual == ModoMedicion.Altura)
@@ -167,17 +151,16 @@ public class LineManager : MonoBehaviour
             return;
         }
 
-        // ----- Piso -----
         if (modoActual == ModoMedicion.Piso)
         {
-            if (_exportando) return;              // debouncer
+            if (_exportando) return;
             if (placedPositions.Count < 3)
             {
                 TxtEstado?.SetText("Debes tener al menos 3 puntos para cerrar el cuarto.");
                 return;
             }
 
-            _exportando = true;                   // <-- aquí sí
+            _exportando = true;
 
             CerrarFiguraVisual();
             TxtEstado?.SetText("Figura cerrada. Generando JSON...");
@@ -185,7 +168,6 @@ public class LineManager : MonoBehaviour
             string path = ExportarJSON();
             hud?.ShowExportResult(path);
 
-            // Lanza regreso a Android y luego cierra Unity (evita crash al abrir 3D)
             AndroidNav.GoToCapture(path);
             PlayerPrefs.SetString("SCENE_TO_LOAD", "RenderScene");
             PlayerPrefs.SetInt("ForceBootstrap", 1);
@@ -196,7 +178,6 @@ public class LineManager : MonoBehaviour
         }
     }
 
-    // AndroidNav.cs (reemplaza GoToCapture)
     public static class AndroidNav
     {
         public static void GoToCapture(string jsonPath)
@@ -223,7 +204,6 @@ public class LineManager : MonoBehaviour
                             {
                                 intent.Call<AndroidJavaObject>("putExtra", "ROOM_JSON_PATH", jsonPath);
 
-                                // ⚠️ SIN NEW_TASK, SIN CLEAR_TOP
                                 activity.Call("startActivity", intent);
                                 Debug.Log("[AndroidNav] startActivity con Activity context (misma task, Unity en pause).");
                             }
@@ -231,7 +211,7 @@ public class LineManager : MonoBehaviour
                         catch (System.Exception ex)
                         {
                             Debug.LogError("[AndroidNav] Error startActivity (activity): " + ex);
-                            LaunchWithAppContext(jsonPath); // último recurso
+                            LaunchWithAppContext(jsonPath);
                         }
                     }));
                 }
@@ -239,14 +219,13 @@ public class LineManager : MonoBehaviour
             catch (System.Exception ex)
             {
                 Debug.LogError("[AndroidNav] Error al obtener currentActivity: " + ex);
-                LaunchWithAppContext(jsonPath); // último recurso
+                LaunchWithAppContext(jsonPath);
             }
     #else
             Debug.Log("[AndroidNav] Solo Android.");
     #endif
         }
 
-        // Fallback si NO hay Activity (por ejemplo, si Unity ya no está en foreground)
         private static void LaunchWithAppContext(string jsonPath)
         {
             try
@@ -259,7 +238,6 @@ public class LineManager : MonoBehaviour
                 {
                     intent.Call<AndroidJavaObject>("setClassName", "com.example.roomify", "com.example.roomify.CaptureActivity");
                     intent.Call<AndroidJavaObject>("putExtra", "ROOM_JSON_PATH", jsonPath);
-                    // Aquí SÍ toca NEW_TASK por ser app context, pero sin CLEAR_TOP
                     int FLAG_ACTIVITY_NEW_TASK = new AndroidJavaClass("android/content/Intent")
                         .GetStatic<int>("FLAG_ACTIVITY_NEW_TASK");
                     intent.Call<AndroidJavaObject>("addFlags", FLAG_ACTIVITY_NEW_TASK);
@@ -277,7 +255,6 @@ public class LineManager : MonoBehaviour
 
     public void OnBtnEliminar()
     {
-        // Borra todo lo creado desde la última confirmación (datos y visuales)
         ClearVisualsSinceConfirm();
 
         if (modoActual == ModoMedicion.Altura)
@@ -289,7 +266,6 @@ public class LineManager : MonoBehaviour
 
         if (modoActual == ModoMedicion.Piso)
         {
-            // revertir puntos y corners a snapshot
             if (placedPositions.Count > placedPositionsAtConfirm)
                 placedPositions.RemoveRange(placedPositionsAtConfirm, placedPositions.Count - placedPositionsAtConfirm);
 
@@ -298,7 +274,6 @@ public class LineManager : MonoBehaviour
 
             currentCornerId = cornerIdAtConfirm;
 
-            // reconstruir lineRenderer con los puntos confirmados
             lineRenderer.positionCount = 0;
             for (int i = 0; i < placedPositions.Count; i++)
             {
@@ -310,17 +285,14 @@ public class LineManager : MonoBehaviour
         }
     }
 
-    // Cierra figura SOLO visualmente (no duplica corner en la data)
     private void CerrarFiguraVisual()
     {
         if (placedPositions.Count >= 3)
         {
-            // Dibujar segmento final: último -> primero (solo en renderer)
             var first = placedPositions[0];
             lineRenderer.positionCount++;
             lineRenderer.SetPosition(lineRenderer.positionCount - 1, first);
 
-            // Distancia del último tramo
             Vector3 A = placedPositions[placedPositions.Count - 1];
             Vector3 B = first;
             float dist = Vector3.Distance(A, B);
@@ -355,18 +327,12 @@ public class LineManager : MonoBehaviour
             obstacles = new List<Obstacle>()
         };
 
-        // Generar paredes con índice circular (i -> i+1, cerrando hacia el 0)
         for (int i = 0; i < corners.Count; i++)
         {
             int j = (i + 1) % corners.Count;
 
-            // Asumiendo Corner.position es Vector2 (x,z) mapeado en (x,y) del Vector2:
             Vector2 fromPos = corners[i].position;
             Vector2 toPos = corners[j].position;
-
-            // Si Corner.position fuera Vector3, reemplaza las dos líneas de arriba por:
-            // Vector2 fromPos = new Vector2(corners[i].position.x, corners[i].position.z);
-            // Vector2 toPos   = new Vector2(corners[j].position.x, corners[j].position.z);
 
             float distance = Vector2.Distance(fromPos, toPos);
             string dirPath = CalcularDireccion(fromPos, toPos);
@@ -403,30 +369,22 @@ public class LineManager : MonoBehaviour
             return dir.y > 0 ? "north" : "south";
     }
 
-    // -----------------------
-    // Utilidades
-    // -----------------------
     private void SnapshotAtConfirm()
     {
         placedPositionsAtConfirm = placedPositions.Count;
         cornersAtConfirm = corners.Count;
         cornerIdAtConfirm = currentCornerId;
 
-        ClearVisualsSinceConfirm(); // arrancar “limpio” el nuevo tramo
+        ClearVisualsSinceConfirm();
     }
 
     private void ClearVisualsSinceConfirm()
     {
-        // Destruye textos y líneas temporales creadas desde la última confirmación
         for (int i = visualsSinceConfirm.Count - 1; i >= 0; i--)
         {
             var go = visualsSinceConfirm[i];
             if (go != null) Destroy(go);
         }
         visualsSinceConfirm.Clear();
-
-        // (No toca el lineRenderer de lo ya confirmado)
-        // Si quieres limpiar TODO el lineRenderer, haz:
-        // lineRenderer.positionCount = 0; (pero eso borraría también lo confirmado)
     }
 }

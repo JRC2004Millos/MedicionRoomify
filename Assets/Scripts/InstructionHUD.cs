@@ -31,7 +31,6 @@ public class InstructionHUD : MonoBehaviour
         if (panelRoot != null) panelRoot.SetActive(visible);
     }
 
-    // ---- Estados de contenido ----
     public void SetModeAltura()
     {
         if (titleText) titleText.text = "Instrucciones - Medir altura";

@@ -1,10 +1,6 @@
 using UnityEngine;
 using System.Linq;
 
-/// <summary>
-/// Asigna materiales de respaldo para piso, paredes y techo cuando no llegan texturas desde Android.
-/// También genera un techo copiando la geometría del piso (misma forma) a una altura dada.
-/// </summary>
 public class RoomVisualFallback : MonoBehaviour
 {
     [Header("Ejecución")]
@@ -45,15 +41,12 @@ public class RoomVisualFallback : MonoBehaviour
         var walls = renderers.Where(r => NameMatches(r, wallKeywords)).ToList();
         var ceils = renderers.Where(r => NameMatches(r, ceilKeywords)).ToList();
 
-        // 2) Asignar materiales de respaldo si faltan o vienen vacíos
         foreach (var r in floors) AssignIfMissing(r, floorDefaultMat);
         foreach (var r in walls) AssignIfMissing(r, wallDefaultMat);
         foreach (var r in ceils) AssignIfMissing(r, ceilingDefaultMat);
 
-        // 3) Si no hay techo, intentar generarlo desde la malla del piso
         if (createCeilingIfMissing && ceils.Count == 0)
         {
-            // Elegimos un piso “principal”: priorizamos el de mayor área aproximada
             var floorCandidate = floors
                 .Select(r => r.GetComponent<MeshFilter>())
                 .Where(mf => mf && mf.sharedMesh)
@@ -73,7 +66,6 @@ public class RoomVisualFallback : MonoBehaviour
         }
     }
 
-    // ---------- Utilidades de materiales ----------
     void EnsureDefaultMaterials()
     {
         if (floorDefaultMat == null)
@@ -91,21 +83,18 @@ public class RoomVisualFallback : MonoBehaviour
         if (r == null) return;
         var mats = r.sharedMaterials;
 
-        // Si no hay materiales, asignamos uno
         if (mats == null || mats.Length == 0)
         {
             r.sharedMaterial = fallback;
             return;
         }
 
-        // Si el único material está vacío/Default-Material, lo reemplazamos
         if (mats.Length == 1)
         {
             if (IsMissingOrDefault(mats[0])) r.sharedMaterial = fallback;
             return;
         }
 
-        // Si hay varias submeshes, intentamos heurística: índice 0 = paredes, índice 1 = piso, índice 2 = techo
         for (int i = 0; i < mats.Length; i++)
         {
             if (!IsMissingOrDefault(mats[i])) continue;
@@ -120,13 +109,11 @@ public class RoomVisualFallback : MonoBehaviour
     bool IsMissingOrDefault(Material m)
     {
         if (m == null) return true;
-        // Sin textura y con nombre por defecto o shader estándar sin propiedades asignadas
         bool noTex = m.mainTexture == null;
         bool defaultName = m.name.ToLower().Contains("default");
         return noTex || defaultName;
     }
 
-    // ---------- Búsqueda por nombre/tag ----------
     bool NameMatches(Component c, string[] keywords)
     {
         string n = c.gameObject.name.ToLower();
@@ -134,14 +121,13 @@ public class RoomVisualFallback : MonoBehaviour
         return keywords.Any(k => n.Contains(k.ToLower()) || t.Contains(k.ToLower()));
     }
 
-    // ---------- Generación de materiales ----------
     Material MakeColorMat(string name, Color color)
     {
         var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
         mat.name = name;
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
-        if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 0f); // Opaque
-        if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);       // Double-sided útil p/muros delgados
+        if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 0f);
+        if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
         return mat;
     }
 
@@ -152,16 +138,14 @@ public class RoomVisualFallback : MonoBehaviour
 
         var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
         mat.name = name;
-        // URP usa _BaseMap para el albedo
         if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Color.white);
-        // tiling
         if (mat.HasProperty("_BaseMap"))
         {
-            mat.mainTextureScale = new Vector2(tiling, tiling); // Unity sigue respetando esto como escala
+            mat.mainTextureScale = new Vector2(tiling, tiling);
         }
-        if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 0f); // Opaque
-        if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);       // Double-sided
+        if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 0f);
+        if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
         return mat;
     }
 
@@ -183,50 +167,41 @@ public class RoomVisualFallback : MonoBehaviour
         return tex;
     }
 
-    // ---------- Techo desde el piso ----------
     GameObject BuildCeilingFromFloor(MeshFilter floorMF, float ceilingHeight)
     {
         if (floorMF == null || floorMF.sharedMesh == null) return null;
 
         var parent = floorMF.transform.parent != null ? floorMF.transform.parent : transform;
 
-        // 1) Llevar vértices del piso a MUNDO
         var floorMesh = floorMF.sharedMesh;
         var vLocal = floorMesh.vertices;
         var vWorld = new Vector3[vLocal.Length];
         for (int i = 0; i < vLocal.Length; i++)
             vWorld[i] = floorMF.transform.TransformPoint(vLocal[i]);
 
-        // 2) Elevarlos en +Y mundial exactamente 'ceilingHeight' desde el piso
-        //    Si tu JSON trae altura en metros, esto coloca el techo a esa distancia por encima del piso.
         var vTopWorld = new Vector3[vWorld.Length];
         for (int i = 0; i < vWorld.Length; i++)
             vTopWorld[i] = vWorld[i] + Vector3.up * ceilingHeight;
 
-        // 3) Pasarlos a espacio LOCAL del padre del piso (para que el GO nuevo herede ese espacio)
         var vTopParent = new Vector3[vTopWorld.Length];
         for (int i = 0; i < vTopWorld.Length; i++)
             vTopParent[i] = parent.InverseTransformPoint(vTopWorld[i]);
 
-        // 4) Triángulos: dejamos el winding ORIGINAL (y haremos el material doble cara)
         var tris = floorMesh.triangles;
 
-        // 5) UVs si existen
         Vector2[] uv = (floorMesh.uv != null && floorMesh.uv.Length == vLocal.Length) ? floorMesh.uv : null;
 
-        // 6) Crear malla de techo
         var ceilingMesh = new Mesh { name = "CeilingMesh" };
         ceilingMesh.indexFormat = (vTopParent.Length > 65000)
             ? UnityEngine.Rendering.IndexFormat.UInt32
             : UnityEngine.Rendering.IndexFormat.UInt16;
         ceilingMesh.vertices = vTopParent;
-        ceilingMesh.triangles = tris;   // sin invertir
+        ceilingMesh.triangles = tris;
         if (uv != null) ceilingMesh.uv = uv;
         ceilingMesh.RecalculateNormals();
         ceilingMesh.RecalculateBounds();
         ceilingMesh.RecalculateTangents();
 
-        // 7) Crear GO techo como hermano del piso
         var go = new GameObject(ceilingObjectName, typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider));
         go.transform.SetParent(parent, false);
         go.transform.localPosition = Vector3.zero;
@@ -241,15 +216,14 @@ public class RoomVisualFallback : MonoBehaviour
         mcol.sharedMesh = ceilingMesh;
         mcol.convex = false;
 
-        // Material (URP/Lit, doble cara)
         AssignIfMissing(mr, ceilingDefaultMat);
         var m = mr.sharedMaterial;
         if (m != null)
         {
             if (m.shader == null || !m.shader.name.Contains("Universal Render Pipeline"))
                 m.shader = Shader.Find("Universal Render Pipeline/Lit");
-            if (m.HasProperty("_Cull")) m.SetFloat("_Cull", 0f);              // doble cara
-            if (m.HasProperty("_Surface")) m.SetFloat("_Surface", 0f);        // Opaque
+            if (m.HasProperty("_Cull")) m.SetFloat("_Cull", 0f);
+            if (m.HasProperty("_Surface")) m.SetFloat("_Surface", 0f);
             if (m.HasProperty("_BaseColor") && m.color.a < 1f)
                 m.SetColor("_BaseColor", new Color(m.color.r, m.color.g, m.color.b, 1f));
         }
@@ -268,7 +242,6 @@ public class RoomVisualFallback : MonoBehaviour
 
     float ApproxMeshAreaOnPlaneY(Mesh mesh, Transform t)
     {
-        // Aproximación: bounding box XZ (suficiente para escoger candidato)
         var b = mesh.bounds;
         return (b.size.x * b.size.z);
     }
@@ -277,21 +250,17 @@ public class RoomVisualFallback : MonoBehaviour
     {
         if (walls == null || walls.Count == 0) return null;
 
-        // Tomamos el renderer de paredes más grande y medimos su bounds en mundo, luego lo convertimos a local del reference
         var biggest = walls.OrderByDescending(w => w.bounds.size.x * w.bounds.size.y * w.bounds.size.z).First();
         var worldBounds = biggest.bounds;
 
-        // Altura ~ tamaño en Y del bounds
         float heightWorld = worldBounds.size.y;
 
-        // Convertimos a espacio local del reference para coherencia con el desplazamiento de vértices en BuildCeilingFromFloor
         var topWorld = new Vector3(worldBounds.center.x, worldBounds.max.y, worldBounds.center.z);
         var bottomWorld = new Vector3(worldBounds.center.x, worldBounds.min.y, worldBounds.center.z);
         var topLocal = reference.InverseTransformPoint(topWorld);
         var bottomLocal = reference.InverseTransformPoint(bottomWorld);
 
         float heightLocal = Mathf.Abs(topLocal.y - bottomLocal.y);
-        // Si sale algo razonable, úsalo
         return (heightLocal > 0.2f && heightLocal < 6f) ? heightLocal : (float?)null;
     }
 }

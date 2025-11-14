@@ -1,8 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// Ajusta el RectTransform del objeto a la zona segura del dispositivo (evita notch o botones).
-/// </summary>
 [RequireComponent(typeof(RectTransform))]
 public class SafeAreaFitter : MonoBehaviour
 {
@@ -18,7 +15,6 @@ public class SafeAreaFitter : MonoBehaviour
 
     void Update()
     {
-        // Detecta cambio de orientación o tamaño
         if (Screen.safeArea != lastSafeArea || 
             Screen.width != lastScreenSize.x || 
             Screen.height != lastScreenSize.y)
@@ -34,7 +30,6 @@ public class SafeAreaFitter : MonoBehaviour
         lastSafeArea = r;
         lastScreenSize = new Vector2Int(Screen.width, Screen.height);
 
-        // Normaliza valores (0–1)
         Vector2 anchorMin = r.position;
         Vector2 anchorMax = r.position + r.size;
         anchorMin.x /= Screen.width;

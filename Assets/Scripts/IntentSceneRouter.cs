@@ -61,7 +61,6 @@ public class IntentSceneLoader : MonoBehaviour
         if (!string.IsNullOrEmpty(newPbr))
             pbrPacksRoot = newPbr;
 
-        // guardar última escena solicitada por Android
         if (!string.IsNullOrEmpty(sceneToLoad))
         {
             PlayerPrefs.SetString("SCENE_TO_LOAD", sceneToLoad);
@@ -82,7 +81,6 @@ public class IntentSceneLoader : MonoBehaviour
     {
         string scene = sceneToLoad;
 
-        // 1️⃣ Si no hay intent válido, revisa PlayerPrefs
         if (string.IsNullOrEmpty(scene))
         {
             bool force = PlayerPrefs.GetInt("ForceBootstrap", 0) == 1;
@@ -91,14 +89,12 @@ public class IntentSceneLoader : MonoBehaviour
         }
 
         if (string.IsNullOrEmpty(scene))
-            scene = "SampleScene"; // fallback total
+            scene = "SampleScene";
 
-        // 2️⃣ limpiar banderas
         PlayerPrefs.DeleteKey("SCENE_TO_LOAD");
         PlayerPrefs.SetInt("ForceBootstrap", 0);
         PlayerPrefs.Save();
 
-        // 3️⃣ redirigir
         Debug.Log($"[BootstrapRouter] Routing to: {scene}");
         StartCoroutine(SceneHandoff.Go(scene));
     }

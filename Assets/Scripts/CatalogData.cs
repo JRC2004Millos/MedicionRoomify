@@ -21,5 +21,5 @@ public class CatalogItem
 {
     public string displayName;
     public Sprite thumbnail;
-    public GameObject prefab;   // El mueble/objeto real que se instanciará
+    public GameObject prefab;
 }

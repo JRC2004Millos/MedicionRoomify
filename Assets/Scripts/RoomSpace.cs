@@ -32,17 +32,14 @@ public class RoomSpace : MonoBehaviour
 
     public bool HasPolygon() => floorPolygonXZ != null && floorPolygonXZ.Count >= 3;
 
-    /// True si el punto (x,z) está dentro del polígono (mundo).
     public bool ContainsXZ(Vector3 worldPos)
     {
         if (!HasPolygon()) return worldPos.x >= minX && worldPos.x <= maxX && worldPos.z >= minZ && worldPos.z <= maxZ;
         return PointInPolygon(new Vector2(worldPos.x, worldPos.z), floorPolygonXZ);
     }
 
-    /// Clampa un punto a los límites (preferible polígono; si no, AABB).
     public Vector3 ClampWorldToInside(Vector3 worldPos)
     {
-        // Proyectar al piso
         worldPos.y = floorY;
 
         if (HasPolygon())
@@ -50,7 +47,6 @@ public class RoomSpace : MonoBehaviour
             if (PointInPolygon(new Vector2(worldPos.x, worldPos.z), floorPolygonXZ))
                 return worldPos;
 
-            // Si está fuera, aproxímalo al borde más cercano del polígono
             Vector2 p = new Vector2(worldPos.x, worldPos.z);
             Vector2 closest = ClosestPointOnPolygon(p, floorPolygonXZ);
             return new Vector3(closest.x, floorY, closest.y);
@@ -63,7 +59,6 @@ public class RoomSpace : MonoBehaviour
         }
     }
 
-    // ======= utilidades geométricas =======
     private static bool PointInPolygon(Vector2 p, List<Vector2> poly)
     {
         bool inside = false;
@@ -100,28 +95,4 @@ public class RoomSpace : MonoBehaviour
         }
         return best;
     }
-
-/*
-    private void OnDrawGizmos()
-    {
-        if (drawBounds && HasValidBounds())
-        {
-            Gizmos.color = boundsColor;
-            Vector3 c = new Vector3((minX + maxX) * 0.5f, floorY, (minZ + maxZ) * 0.5f);
-            Vector3 s = new Vector3(Mathf.Abs(maxX - minX), 0.02f, Mathf.Abs(maxZ - minZ));
-            Gizmos.DrawCube(c, s);
-        }
-
-        if (drawPolygon && HasPolygon())
-        {
-            Gizmos.color = polyColor;
-            for (int i = 0; i < floorPolygonXZ.Count; i++)
-            {
-                Vector3 a = new Vector3(floorPolygonXZ[i].x, floorY + 0.001f, floorPolygonXZ[i].y);
-                Vector3 b = new Vector3(floorPolygonXZ[(i + 1) % floorPolygonXZ.Count].x, floorY + 0.001f, floorPolygonXZ[(i + 1) % floorPolygonXZ.Count].y);
-                Gizmos.DrawLine(a, b);
-            }
-        }
-    }
-    */
 }

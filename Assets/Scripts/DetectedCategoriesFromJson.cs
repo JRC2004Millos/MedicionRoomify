@@ -19,12 +19,12 @@ using TMPro;
 public class DetectedCategoriesFromJson : MonoBehaviour
 {
     [Header("UI")]
-    [SerializeField] private RectTransform categoriesContent;      // ← arrastra CategoriesContent (el del scroll)
-    [SerializeField] private GameObject categoryButtonPrefab;      // ← tu CategoryButtonPrefab (con Label/Icon)
+    [SerializeField] private RectTransform categoriesContent;
+    [SerializeField] private GameObject categoryButtonPrefab;
     [SerializeField] private bool clearContentBeforeBuild = true;
 
     [Header("Destino de ítems")]
-    [SerializeField] private CategoryItemsLoader itemsLoader;      // ← arrastra el CatalogRunTime (CategoryItemsLoader)
+    [SerializeField] private CategoryItemsLoader itemsLoader;
 
     [Header("Archivo JSON de detecciones")]
     [Tooltip("Si lo dejas vacío, usa StreamingAssets/detected_objects.json o persistentDataPath")]
@@ -46,34 +46,27 @@ public class DetectedCategoriesFromJson : MonoBehaviour
 
     public void BuildFromJson()
     {
-        // 1) Cargar JSON
         var wrapper = LoadDetections();
         _cache = wrapper;
 
-        // 2) Categorías únicas (case-insensitive)
         var cats = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (wrapper?.detections != null)
             foreach (var d in wrapper.detections)
                 if (!string.IsNullOrWhiteSpace(d.categoryName)) cats.Add(d.categoryName.Trim());
 
-        // Fallback si no trae nada
         if (cats.Count == 0)
         {
             Debug.LogWarning("[DetectedCategoriesFromJson] No se encontraron categorías en el JSON.");
             return;
         }
 
-        // 3) Limpiar contenedor
         if (clearContentBeforeBuild)
             for (int i = categoriesContent.childCount - 1; i >= 0; i--)
                 Destroy(categoriesContent.GetChild(i).gameObject);
 
-        // 4) Crear un botón por categoría (ordenado alfabéticamente)
         foreach (var cat in cats.OrderBy(c => c, StringComparer.OrdinalIgnoreCase))
             SpawnCategoryButton(cat);
     }
-
-    // ================= helpers =================
 
     private DetectionWrapper LoadDetections()
     {
@@ -102,13 +95,12 @@ public class DetectedCategoriesFromJson : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
         string candidate = Path.Combine(Application.persistentDataPath, detectionsJsonFileName);
         if (File.Exists(candidate)) return candidate;
-        return candidate; // en Android el StreamingAssets requiere WWW/UnityWebRequest; usamos persistent
+        return candidate;
 #else
         string streaming = Path.Combine(Application.streamingAssetsPath, detectionsJsonFileName);
         if (File.Exists(streaming)) return streaming;
         string persistent = Path.Combine(Application.persistentDataPath, detectionsJsonFileName);
         if (File.Exists(persistent)) return persistent;
-        // último recurso: ruta relativa dentro del proyecto (Editor)
         return streaming;
 #endif
     }
@@ -118,11 +110,9 @@ public class DetectedCategoriesFromJson : MonoBehaviour
         var go = Instantiate(categoryButtonPrefab, categoriesContent);
         go.name = $"Cat_{jsonCategoryName}";
 
-        // Texto
         var txt = go.GetComponentInChildren<TMP_Text>(true);
         if (txt) txt.text = Pretty(jsonCategoryName);
 
-        // Icono
         if (useIcons)
         {
             var icon = go.transform.Find("Icon")?.GetComponent<Image>();
@@ -135,13 +125,12 @@ public class DetectedCategoriesFromJson : MonoBehaviour
             }
         }
 
-        // Click → cargar ítems de la carpeta que mapea esa categoría
         var btn = go.GetComponent<Button>();
         if (btn)
             btn.onClick.AddListener(() =>
             {
                 string folder = NormalizeForFolder(jsonCategoryName);
-                itemsLoader.ShowCategory(folder);  // ← carga Resources/Catalog/<folder>/*
+                itemsLoader.ShowCategory(folder);
             });
     }
 
@@ -152,7 +141,6 @@ public class DetectedCategoriesFromJson : MonoBehaviour
         return char.ToUpper(s[0]) + s.Substring(1);
     }
 
-    // Mapea NOMBRES DEL JSON a nombres de archivo de icono
     private static string NormalizeForIcon(string raw)
     {
         string s = raw.Trim().ToLowerInvariant();
@@ -170,8 +158,7 @@ public class DetectedCategoriesFromJson : MonoBehaviour
             _ => char.ToUpper(s[0]) + s.Substring(1)
         };
     }
-
-    // Mapea NOMBRES DEL JSON a carpetas bajo Resources/Catalog/<folder>
+    
     public static string NormalizeForFolder(string raw)
     {
         string s = raw.Trim().ToLowerInvariant();
@@ -184,8 +171,8 @@ public class DetectedCategoriesFromJson : MonoBehaviour
             "sofa" or "couch" => "Sofa",
             "lamp" or "lampara" or "lámpara" => "Lamp",
             "table" => "Table",
-            "chair" => "chair",          // ← si tu carpeta está en minúsculas, respétalo
-            "furniture" => "furniture",  // ← idem
+            "chair" => "chair",
+            "furniture" => "furniture",
             _ => char.ToUpper(s[0]) + s.Substring(1)
         };
     }

@@ -4,10 +4,10 @@ using System;
 [RequireComponent(typeof(FurnitureInteractable))]
 public class FurnitureMoveGizmo : MonoBehaviour
 {
-    public float gridSnap = 0.05f;     // 5 cm
+    public float gridSnap = 0.05f;
     public bool useSnap = true;
     public bool allowRotate = true;
-    public float rotateSpeed = 0.25f;  // grados por píxel (promedio)
+    public float rotateSpeed = 0.25f;
 
     private FurnitureInteractable fi;
     private Camera cam;
@@ -23,12 +23,10 @@ public class FurnitureMoveGizmo : MonoBehaviour
         fi = GetComponent<FurnitureInteractable>();
         cam = c ? c : Camera.main;
 
-        // 🔹 Buscar el controlador de cámara en el padre de la cámara
         camController = cam ? cam.GetComponentInParent<FreeCameraController>() : null;
         if (camController != null)
             camController.SetInputEnabled(false);
 
-        // plano horizontal a la altura actual del mueble
         float y = transform.position.y;
         movePlane = new Plane(Vector3.up, new Vector3(0f, y, 0f));
 
@@ -36,9 +34,6 @@ public class FurnitureMoveGizmo : MonoBehaviour
         onFinishCb = onFinish;
     }
 
-    // ---------------------------
-    //  MODO ROTAR (Y)
-    // ---------------------------
     public void BeginRotation(Camera c, Action<FurnitureInteractable> onFinish)
     {
         fi = GetComponent<FurnitureInteractable>();
@@ -100,17 +95,12 @@ public class FurnitureMoveGizmo : MonoBehaviour
 
     void MoveTo(Vector3 target)
     {
-        // Snap XZ
         if (useSnap)
         {
             target.x = Mathf.Round(target.x / gridSnap) * gridSnap;
             target.z = Mathf.Round(target.z / gridSnap) * gridSnap;
         }
-        // Mantener altura (plano ya está a la Y del mueble)
         target.y = transform.position.y;
-
-        // (Opcional) Clamp dentro del cuarto si usas RoomSpace:
-        // target = RoomSpace.Instance.ClampWorldToInside(target);
 
         transform.position = target;
     }
@@ -121,9 +111,9 @@ public class FurnitureMoveGizmo : MonoBehaviour
         onFinishCb?.Invoke(fi);
 
         if (camController != null)
-            camController.SetInputEnabled(true);    // ✅ volver a activar cámara
+            camController.SetInputEnabled(true);
 
-        Destroy(this); // componente efímero para cada edición
+        Destroy(this);
     }
 
     void HandleTouchRotate()

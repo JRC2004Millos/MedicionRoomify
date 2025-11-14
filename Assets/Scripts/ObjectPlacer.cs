@@ -50,10 +50,8 @@ public class ObjectPlacer : MonoBehaviour
         if (!isPlacementMode || previewObject == null)
             return;
 
-        // Actualizar posición del preview
         UpdatePreviewPosition();
 
-        // Detectar toque/click para colocar
         if (Input.touchCount > 0)
         {
             Touch touch = Input.GetTouch(0);
@@ -73,9 +71,6 @@ public class ObjectPlacer : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Inicia el modo de colocación con un prefab
-    /// </summary>
     public void BeginPlacement(GameObject prefab)
     {
         if (prefab == null)
@@ -86,7 +81,6 @@ public class ObjectPlacer : MonoBehaviour
 
         Debug.Log($"[ObjectPlacer] Iniciando colocación de: {prefab.name}");
 
-        // Limpiar preview anterior
         if (previewObject != null)
             Destroy(previewObject);
 
@@ -96,9 +90,6 @@ public class ObjectPlacer : MonoBehaviour
         CreatePreview();
     }
 
-    /// <summary>
-    /// Cancela el modo de colocación
-    /// </summary>
     public void CancelPlacement()
     {
         Debug.Log("[ObjectPlacer] Colocación cancelada");
@@ -114,19 +105,15 @@ public class ObjectPlacer : MonoBehaviour
 
     void CreatePreview()
     {
-        // Instanciar copia del prefab
         previewObject = Instantiate(currentPrefab);
         previewObject.name = $"Preview_{currentPrefab.name}";
 
-        // Hacer semi-transparente
         MakeTransparent(previewObject, validColor);
 
-        // Desactivar colisiones en el preview
         var colliders = previewObject.GetComponentsInChildren<Collider>();
         foreach (var col in colliders)
             col.enabled = false;
 
-        // Desactivar rigidbodies
         var rigidbodies = previewObject.GetComponentsInChildren<Rigidbody>();
         foreach (var rb in rigidbodies)
             rb.isKinematic = true;
@@ -134,16 +121,13 @@ public class ObjectPlacer : MonoBehaviour
 
     void UpdatePreviewPosition()
     {
-        // Raycast desde el centro de la pantalla
         Vector2 screenCenter = new Vector2(Screen.width / 2f, Screen.height / 2f);
         Ray ray = mainCamera.ScreenPointToRay(screenCenter);
 
         RaycastHit hit;
 
-        // Intentar raycast en superficies
         if (Physics.Raycast(ray, out hit, maxRaycastDistance, placementLayerMask))
         {
-            // Encontró una superficie
             lastValidPosition = hit.point;
             lastValidRotation = Quaternion.FromToRotation(Vector3.up, hit.normal);
             hasValidPlacement = true;
@@ -151,17 +135,16 @@ public class ObjectPlacer : MonoBehaviour
             previewObject.transform.SetPositionAndRotation(lastValidPosition, lastValidRotation);
             SetPreviewColor(validColor);
 
-            Debug.DrawLine(ray.origin, hit.point, Color.green); // Debug visual
+            Debug.DrawLine(ray.origin, hit.point, Color.green);
         }
         else
         {
-            // No encontró superficie, colocar a distancia fija
             lastValidPosition = mainCamera.transform.position + mainCamera.transform.forward * defaultPlacementDistance;
             lastValidRotation = Quaternion.identity;
             hasValidPlacement = true;
 
             previewObject.transform.SetPositionAndRotation(lastValidPosition, lastValidRotation);
-            SetPreviewColor(invalidColor); // Amarillo para indicar "sin superficie"
+            SetPreviewColor(invalidColor);
 
             Debug.DrawRay(ray.origin, ray.direction * defaultPlacementDistance, Color.yellow); // Debug visual
         }
@@ -171,46 +154,33 @@ public class ObjectPlacer : MonoBehaviour
     {
         Debug.Log($"[ObjectPlacer] Colocando objeto en: {lastValidPosition}");
 
-        // Instanciar el objeto real
         GameObject placedObject = Instantiate(currentPrefab, lastValidPosition, lastValidRotation);
         placedObject.name = currentPrefab.name;
 
-        // Ajustar colliders y capa para interacción con muebles
         SetupPlacedFurniture(placedObject);
 
-        // Salir del modo colocación
         CancelPlacement();
     }
 
-    /// <summary>
-    /// Configura el objeto colocado para que funcione bien con interacción:
-    /// - Lo pone en la capa Furniture (si existe)
-    /// - Elimina MeshCollider (evita problemas de mallas no accesibles)
-    /// - Se asegura de que haya al menos un BoxCollider
-    /// </summary>
     void SetupPlacedFurniture(GameObject root)
     {
-        // 1. Poner en capa Furniture (si existe)
         int furnitureLayer = LayerMask.NameToLayer(furnitureLayerName);
         if (furnitureLayer != -1)
         {
             SetLayerRecursively(root, furnitureLayer);
         }
 
-        // 2. Eliminar MeshColliders (para evitar collisionmeshdata con mallas no read/write)
         var meshColliders = root.GetComponentsInChildren<MeshCollider>(true);
         foreach (var mc in meshColliders)
         {
             Destroy(mc);
         }
 
-        // 3. Asegurarse de que haya al menos un Collider
         if (forceBoxCollider)
         {
             var allColliders = root.GetComponentsInChildren<Collider>(true);
             if (allColliders == null || allColliders.Length == 0)
             {
-                // Crear un BoxCollider ajustado al Renderer principal
                 var rend = root.GetComponentInChildren<Renderer>();
                 if (rend != null)
                 {
@@ -221,7 +191,6 @@ public class ObjectPlacer : MonoBehaviour
                 }
                 else
                 {
-                    // fallback: collider unitario en el root
                     root.AddComponent<BoxCollider>();
                 }
             }
@@ -242,17 +211,15 @@ public class ObjectPlacer : MonoBehaviour
         var renderers = obj.GetComponentsInChildren<Renderer>();
         foreach (var rend in renderers)
         {
-            // Crear materiales temporales transparentes
             Material[] newMats = new Material[rend.materials.Length];
             for (int i = 0; i < newMats.Length; i++)
             {
                 newMats[i] = new Material(rend.materials[i]);
                 newMats[i].color = color;
 
-                // Configurar transparencia
                 if (newMats[i].HasProperty("_Mode"))
                 {
-                    newMats[i].SetFloat("_Mode", 3); // Transparent
+                    newMats[i].SetFloat("_Mode", 3);
                 }
                 if (newMats[i].HasProperty("_SrcBlend"))
                 {
@@ -285,8 +252,6 @@ public class ObjectPlacer : MonoBehaviour
         }
     }
 
-    // Métodos públicos útiles
     public bool IsPlacing() => isPlacementMode;
-
     public GameObject GetCurrentPrefab() => currentPrefab;
 }

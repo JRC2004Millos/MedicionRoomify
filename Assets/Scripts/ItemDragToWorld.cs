@@ -11,14 +11,13 @@ public class ItemDragToWorld : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     [SerializeField] private Image dragGhostImage;
 
     [Header("Item")]
-    [SerializeField] private GameObject itemPrefab;   // El prefab a soltar
-    [SerializeField] private Image itemThumb;         // La imagen del botón (para el ghost)
+    [SerializeField] private GameObject itemPrefab;
+    [SerializeField] private Image itemThumb;
 
     Camera cam;
 
     void Awake()
     {
-        // Autowire para minimizar cableado en el inspector
         if (!dropPlacer) dropPlacer = FindObjectOfType<RoomDropPlacer>();
         if (!dragGhostImage)
         {
@@ -29,7 +28,6 @@ public class ItemDragToWorld : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         cam = Camera.main;
     }
 
-    // Esto lo usa CategoryItemsLoader al instanciar el botón
     public void SetItemPrefab(GameObject prefab) => itemPrefab = prefab;
 
     public void OnBeginDrag(PointerEventData eventData)
@@ -51,10 +49,8 @@ public class ItemDragToWorld : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (dragGhostImage) dragGhostImage.gameObject.SetActive(false);
         if (!dropPlacer || !itemPrefab) return;
 
-        // Intenta soltar en el piso usando la posición de pantalla al soltar
         if (dropPlacer.TryPlaceAtPointer(itemPrefab, eventData.position, out var spawned))
         {
-            // opcional: feedback (anim, sonido, selección)
         }
     }
 }

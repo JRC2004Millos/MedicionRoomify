@@ -22,16 +22,14 @@ public class Wall
 public class Corner
 {
     public string id;
-    public Vector2 position; // (x,y) en plano del piso
+    public Vector2 position;
 
     public Corner(string id, Vector3 worldPosition)
     {
         this.id = id;
-        // toma X,Z del mundo y los lleva al plano 2D (x,y)
         this.position = new Vector2(worldPosition.x, worldPosition.z);
     }
 
-    // ctor vacío para JsonUtility
     public Corner() { }
 }
 

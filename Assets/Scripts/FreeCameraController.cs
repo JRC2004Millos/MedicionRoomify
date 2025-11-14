@@ -37,29 +37,28 @@ public class FreeCameraController : MonoBehaviour
     bool blockFromUIUntilAllReleased = false;
 
     CharacterController cc;
-    float floorY = 0f;         // se actualizará si existe RoomBuilder
-    float roomHeight = 2.6f;   // idem
+    float floorY = 0f;
+    float roomHeight = 2.6f;
 
     [Header("Spawn dentro del cuarto")]
     public bool snapInsideOnStart = true;
-    public float spawnFromTop = 5f;    // metros por encima del piso para el raycast
-    public float spawnMargin = 0.1f;   // margen alejado de bordes
+    public float spawnFromTop = 5f;
+    public float spawnMargin = 0.1f;
 
     [Header("TP forzado (opcional)")]
-    public Transform forcedSpawn;   // <- arrástrale un Empty dentro del cuarto
-    public bool snapToFloorAtSpawn = true; // ajusta Y al piso si hay MeshCollider
+    public Transform forcedSpawn;
+    public bool snapToFloorAtSpawn = true;
 
     void Awake()
     {
         cc = GetComponent<CharacterController>();
-        // Capsule “parada”: radio pequeño para pasar por esquinas sin atascar
         cc.radius = 0.2f;
         cc.height = Mathf.Max(eyeHeight, 0.5f);
         cc.slopeLimit = 90f;
         cc.stepOffset = 0f;
         cc.skinWidth = 0.02f;
         cc.center = new Vector3(0f, (cc.height * 0.5f) - eyeHeight, 0f);
-        cc.stepOffset = 0.3f;   // subir pequeños bordes
+        cc.stepOffset = 0.3f;
         cc.minMoveDistance = 0f;
         cc.enableOverlapRecovery = true;
     }
@@ -71,18 +70,14 @@ public class FreeCameraController : MonoBehaviour
         pitch = euler.x;
         if (Camera.main) Camera.main.nearClipPlane = 0.01f;
 
-        // Intentar leer altura real del cuarto de tu RoomBuilder
         var rb = FindFirstObjectByType<RoomBuilder>();
         if (rb != null)
         {
-            // En tu RoomBuilder guarda floorBaseY como público o internal con [SerializeField]
-            // (del ajuste anterior donde alineaste paredes)
             var floorBaseYField = typeof(RoomBuilder).GetField("floorBaseY",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             if (floorBaseYField != null)
                 floorY = (float)floorBaseYField.GetValue(rb);
 
-            // room_dimensions?.height
             var dataField = typeof(RoomBuilder).GetField("data",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             if (dataField != null)
@@ -105,7 +100,6 @@ public class FreeCameraController : MonoBehaviour
         }
         if (roomHeight <= 0.51f) roomHeight = roomHeightFallback;
 
-        // coloca la cámara a la altura de ojo dentro del cuarto
         Vector3 p = transform.position;
         p.y = floorY + eyeHeight;
         transform.position = p;
@@ -125,7 +119,6 @@ public class FreeCameraController : MonoBehaviour
 #endif
     }
 
-    // ------------------- PC -------------------
     void DesktopLook()
     {
         if (Input.GetMouseButtonDown(1) && PointerOverUIAt(Input.mousePosition)) return;
@@ -155,10 +148,9 @@ public class FreeCameraController : MonoBehaviour
             (Input.GetKey(KeyCode.W) ? 1 : 0) - (Input.GetKey(KeyCode.S) ? 1 : 0)
         );
         Vector3 worldDelta = transform.TransformDirection(dir) * speed * Time.deltaTime;
-        cc.Move(worldDelta); // ✅ respeta colisiones con paredes/techo
+        cc.Move(worldDelta);
     }
 
-    // ------------------- MOBILE -------------------
     void MobileInput()
     {
         if (Input.touchCount > 0)
@@ -204,10 +196,8 @@ public class FreeCameraController : MonoBehaviour
             var t2 = Input.GetTouch(1);
             var t3 = Input.GetTouch(2);
 
-            // Promedia el desplazamiento de los 3 dedos
             Vector2 avgDelta = (t1.deltaPosition + t2.deltaPosition + t3.deltaPosition) / 3f;
 
-            // Arrastrar 3 dedos hacia arriba/abajo = subir/bajar
             float dpi = Mathf.Max(1f, Screen.dpi);
             Vector3 upMove = Vector3.up * (avgDelta.y / dpi) * verticalTouchSpeed;
 
@@ -219,7 +209,6 @@ public class FreeCameraController : MonoBehaviour
             var t1 = Input.GetTouch(0);
             var t2 = Input.GetTouch(1);
 
-            // Pan con dos dedos
             if (t1.phase == TouchPhase.Moved && t2.phase == TouchPhase.Moved)
             {
                 Vector2 avgDelta = 0.5f * (t1.deltaPosition + t2.deltaPosition);
@@ -230,7 +219,6 @@ public class FreeCameraController : MonoBehaviour
                 cc.Move(move);
             }
 
-            // Pinch zoom
             if (t1.phase == TouchPhase.Moved || t2.phase == TouchPhase.Moved)
             {
                 float prevDist = (t1.position - t1.deltaPosition - (t2.position - t2.deltaPosition)).magnitude;
@@ -243,14 +231,12 @@ public class FreeCameraController : MonoBehaviour
 
     }
 
-    // ------------------- LIMITE VERTICAL -------------------
     void ClampVerticalInsideRoom()
     {
         Vector3 p = transform.position;
 
         float minY = floorY + eyeHeight;
 
-        // Usa la altura del JSON si es válida; si no, recurre al fallback
         float topFromJson = roomHeight - headClearance;
         if (topFromJson < eyeHeight + 0.05f)
             topFromJson = roomHeightFallback - headClearance;
@@ -263,7 +249,6 @@ public class FreeCameraController : MonoBehaviour
     }
 
 
-    // ------------------- UI HELPERS -------------------
     bool PointerOverUIAt(Vector2 screenPos)
     {
         if (EventSystem.current != null)
@@ -296,20 +281,16 @@ public class FreeCameraController : MonoBehaviour
 
     void SnapInsideRoom()
     {
-        // --- A) Si hay un TP forzado, úsalo y listo ---
         if (forcedSpawn != null)
         {
             Vector3 pos = forcedSpawn.position;
 
             if (snapToFloorAtSpawn)
             {
-                // intenta ajustar Y exactamente al piso (si lo golpea)
-                // para no depender de capas, probamos RaycastAll y elegimos el "Floor" si existe
                 RaycastHit[] hits = Physics.RaycastAll(pos + Vector3.up * 3f, Vector3.down, 6f);
                 float bestY = float.NegativeInfinity;
                 MeshCollider floorCol = null;
 
-                // Busca el collider del piso por nombre
                 var floors = GameObject.FindObjectsOfType<MeshCollider>();
                 foreach (var mc in floors)
                 {
@@ -329,7 +310,6 @@ public class FreeCameraController : MonoBehaviour
                 }
                 else
                 {
-                    // si no localiza el floor concreto, acepta la superficie más alta que esté debajo
                     for (int i = 0; i < hits.Length; i++)
                         bestY = Mathf.Max(bestY, hits[i].point.y);
                 }
@@ -337,7 +317,7 @@ public class FreeCameraController : MonoBehaviour
                 if (!float.IsNegativeInfinity(bestY))
                     pos.y = bestY + eyeHeight;
                 else
-                    pos.y = pos.y + eyeHeight; // fallback simple
+                    pos.y = pos.y + eyeHeight;
             }
             else
             {
@@ -348,8 +328,6 @@ public class FreeCameraController : MonoBehaviour
             transform.position = pos;
             cc.enabled = was;
 
-            // actualiza límites verticales si tienes RoomBuilder
-            // actualiza límites verticales si tienes RoomBuilder
             var rbX = FindFirstObjectByType<RoomBuilder>();
             if (rbX != null)
             {
@@ -361,11 +339,9 @@ public class FreeCameraController : MonoBehaviour
                 roomHeight = roomHeightFallback;
             }
 
-            return; // 👈 ya hicimos TP, salimos
+            return;
         }
 
-        // --- B) Si NO hay TP forzado, puedes dejar aquí cualquiera de tus lógicas anteriores ---
-        // (por simplicidad, coloca al centro del bounds del piso y ajusta a piso)
         MeshFilter floorMF = null;
         var allMF = GameObject.FindObjectsOfType<MeshFilter>();
         for (int i = 0; i < allMF.Length; i++)
@@ -387,7 +363,6 @@ public class FreeCameraController : MonoBehaviour
                                                                                                           Vector3.Scale(floorMF.sharedMesh.bounds.size, floorMF.transform.lossyScale));
         Vector3 center = b.center;
 
-        // Ajuste a piso
         Vector3 pos2 = center;
         RaycastHit hit2;
         if (Physics.Raycast(center + Vector3.up * 5f, Vector3.down, out hit2, 10f))

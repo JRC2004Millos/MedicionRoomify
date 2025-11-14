@@ -9,15 +9,13 @@ using UnityEngine.EventSystems;
 
 public class ARPlacementController : MonoBehaviour
 {
-    public GameObject placementPrefab; // Prefab que vas a colocar
+    public GameObject placementPrefab;
     private GameObject spawnedObject;
 
     private ARRaycastManager raycastManager;
     private List<ARRaycastHit> hits = new List<ARRaycastHit>();
 
-    public TextMeshProUGUI debugText; // Arrastrar desde el editor
-
-    // Evento personalizado para notificar cuando se coloca un objeto
+    public TextMeshProUGUI debugText; 
     public event Action<Vector3> OnObjectPlaced;
 
     void Awake()

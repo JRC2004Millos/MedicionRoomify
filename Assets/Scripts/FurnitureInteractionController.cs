@@ -10,7 +10,7 @@ public class FurnitureInteractionController : MonoBehaviour
     [Range(300, 1200)] public float longPressMs = 550f;
 
     [Range(5f, 100f)]
-    public float touchMoveTolerancePx = 40f;   // tolerancia para que siga contando como "press"
+    public float touchMoveTolerancePx = 40f;
 
     [Header("UI")]
     public RectTransform contextMenu;
@@ -21,7 +21,6 @@ public class FurnitureInteractionController : MonoBehaviour
 
     private FurnitureInteractable current;
 
-    // Estado del long-press
     private bool isPressing;
     private float pressStartTime;
     private Vector2 pressStartPos;
@@ -32,7 +31,6 @@ public class FurnitureInteractionController : MonoBehaviour
     {
         if (!cam) cam = Camera.main;
 
-        // Si te olvidas de poner la máscara, que use "Furniture" por nombre
         if (furnitureMask.value == 0)
             furnitureMask = LayerMask.GetMask("Furniture");
 
@@ -47,7 +45,6 @@ public class FurnitureInteractionController : MonoBehaviour
 
     void Update()
     {
-        // Priorizar touch en móvil
         if (Input.touchSupported && Application.isMobilePlatform)
         {
             HandleTouchInput();
@@ -64,7 +61,7 @@ public class FurnitureInteractionController : MonoBehaviour
         if (EventSystem.current != null &&
             EventSystem.current.IsPointerOverGameObject())
         {
-            return; // El click está sobre UI
+            return;
         }
 
         if (Input.GetMouseButtonDown(0))
@@ -82,7 +79,6 @@ public class FurnitureInteractionController : MonoBehaviour
 
             if (dist > touchMoveTolerancePx)
             {
-                // Se movió demasiado = ya no cuenta como long-press
                 isPressing = false;
                 return;
             }
@@ -106,7 +102,6 @@ public class FurnitureInteractionController : MonoBehaviour
     {
         if (Input.touchCount == 0)
         {
-            // Reset si no hay toques
             isPressing = false;
             longPressTriggered = false;
             activeFingerId = -1;
@@ -117,14 +112,11 @@ public class FurnitureInteractionController : MonoBehaviour
         {
             Touch t = Input.GetTouch(i);
 
-            // Si aún no tenemos dedo activo, tomamos uno cuando empiece
             if (activeFingerId == -1 && t.phase == TouchPhase.Began)
             {
-                // Evitar si empezó sobre UI (Input System nuevo)
                 if (EventSystem.current != null &&
                     EventSystem.current.IsPointerOverGameObject())
                 {
-                    // ignoramos este toque y seguimos con otros
                     continue;
                 }
 
@@ -136,7 +128,6 @@ public class FurnitureInteractionController : MonoBehaviour
                 continue;
             }
 
-            // Si este no es el dedo activo, lo ignoramos
             if (t.fingerId != activeFingerId)
                 continue;
 
@@ -151,7 +142,6 @@ public class FurnitureInteractionController : MonoBehaviour
                         if (!isPressing || longPressTriggered)
                             break;
 
-                        // Si se mueve más de la tolerancia, cancelamos el long-press
                         if (dist > touchMoveTolerancePx)
                         {
                             isPressing = false;
@@ -159,7 +149,6 @@ public class FurnitureInteractionController : MonoBehaviour
                             break;
                         }
 
-                        // Aquí es donde realmente “holdear” dispara la selección
                         if (dtMs >= longPressMs)
                         {
                             longPressTriggered = true;
@@ -171,7 +160,6 @@ public class FurnitureInteractionController : MonoBehaviour
                 case TouchPhase.Ended:
                 case TouchPhase.Canceled:
                     {
-                        // Si levantó el dedo antes del long-press -> no hace nada
                         isPressing = false;
                         longPressTriggered = false;
                         activeFingerId = -1;
@@ -201,7 +189,6 @@ public class FurnitureInteractionController : MonoBehaviour
 
     void SelectFurniture(FurnitureInteractable fi, Vector2 screenPos)
     {
-        // Quitamos highlight anterior
         if (current != null)
             current.SetHighlight(false);
 
@@ -217,7 +204,6 @@ public class FurnitureInteractionController : MonoBehaviour
 
         contextMenu.gameObject.SetActive(true);
 
-        // Asumimos canvas en Screen Space - Overlay
         Vector2 localPos;
         RectTransform canvasRect = contextMenu.GetComponentInParent<Canvas>().GetComponent<RectTransform>();
 
@@ -297,12 +283,10 @@ public class FurnitureInteractionController : MonoBehaviour
     #region PERSISTENCIA (stubs)
     void SaveFurniturePose(FurnitureInteractable fi)
     {
-        // TODO: guardar fi.furnitureId + transform en tu JSON/estado
     }
 
     void SaveFurnitureDeletion(string id)
     {
-        // TODO: eliminar id de tu JSON/estado
     }
     #endregion
 }

@@ -19,10 +19,8 @@ public class ObjectDetectionSample : MonoBehaviour
     [SerializeField] private float _probabilityThreshold = .5f;
     [SerializeField] private ARObjectDetectionManager _objectDetectionManager;
     
-    // ✅ CONFIGURACIÓN DE GUARDADO AUTOMÁTICO
-    [SerializeField] private float _autoSaveInterval = 5f; // Guardar cada 5 segundos
-    [SerializeField] private int _maxDetections = 1000; // Límite de detecciones para evitar archivos muy grandes
-
+    [SerializeField] private float _autoSaveInterval = 5f;
+    [SerializeField] private int _maxDetections = 1000;
     private List<DetectedObjectData> _detectedObjectsList = new List<DetectedObjectData>();
     private string _jsonFilePath;
     private Coroutine _autoSaveCoroutine;
@@ -33,7 +31,6 @@ public class ObjectDetectionSample : MonoBehaviour
         _jsonFilePath = Path.Combine(Application.persistentDataPath, "detected_objects.json");
         Debug.Log($"📁 JSON se guardará en: {_jsonFilePath}");
         
-        // ✅ CARGAR DATOS EXISTENTES AL INICIAR
         LoadExistingDetections();
     }
 
@@ -48,7 +45,6 @@ public class ObjectDetectionSample : MonoBehaviour
         _objectDetectionManager.enabled = true;
         _objectDetectionManager.MetadataInitialized += ObjectDetectionManagerOnMetadataInitialized;
         
-        // ✅ INICIAR GUARDADO AUTOMÁTICO
         _autoSaveCoroutine = StartCoroutine(AutoSaveCoroutine());
     }
 
@@ -60,10 +56,9 @@ public class ObjectDetectionSample : MonoBehaviour
         }
     }
 
-    // ✅ EVENTOS DE APLICACIÓN PARA GUARDAR EN MÓVILES
     private void OnApplicationPause(bool pauseStatus)
     {
-        if (pauseStatus) // App se está pausando
+        if (pauseStatus)
         {
             Debug.Log("📱 App pausada - Guardando JSON...");
             SaveDetectionsToJson();
@@ -72,7 +67,7 @@ public class ObjectDetectionSample : MonoBehaviour
 
     private void OnApplicationFocus(bool hasFocus)
     {
-        if (!hasFocus) // App perdió el foco
+        if (!hasFocus)
         {
             Debug.Log("📱 App perdió foco - Guardando JSON...");
             SaveDetectionsToJson();
@@ -81,7 +76,6 @@ public class ObjectDetectionSample : MonoBehaviour
 
     private void OnDestroy()
     {
-        // ✅ CLEANUP
         if (_objectDetectionManager != null)
         {
             _objectDetectionManager.MetadataInitialized -= ObjectDetectionManagerOnMetadataInitialized;
@@ -105,7 +99,6 @@ public class ObjectDetectionSample : MonoBehaviour
             return;
         }
 
-        // ✅ NO LIMPIAR LA LISTA - Solo agregar nuevas detecciones
         List<DetectedObjectData> newDetections = new List<DetectedObjectData>();
 
         for (int i = 0; i < results.Count; i++)
@@ -152,13 +145,11 @@ public class ObjectDetectionSample : MonoBehaviour
             newDetections.Add(newDetection);
         }
 
-        // ✅ AGREGAR SOLO NUEVAS DETECCIONES
         if (newDetections.Count > 0)
         {
             _detectedObjectsList.AddRange(newDetections);
             _hasUnsavedData = true;
 
-            // ✅ LIMITAR TAMAÑO DE LA LISTA
             if (_detectedObjectsList.Count > _maxDetections)
             {
                 int excess = _detectedObjectsList.Count - _maxDetections;
@@ -170,7 +161,6 @@ public class ObjectDetectionSample : MonoBehaviour
         }
     }
 
-    // ✅ CORRUTINA PARA GUARDADO AUTOMÁTICO
     private IEnumerator AutoSaveCoroutine()
     {
         while (true)
@@ -184,7 +174,6 @@ public class ObjectDetectionSample : MonoBehaviour
         }
     }
 
-    // ✅ CARGAR DETECCIONES EXISTENTES
     private void LoadExistingDetections()
     {
         try
@@ -210,7 +199,6 @@ public class ObjectDetectionSample : MonoBehaviour
         }
     }
 
-    // ✅ MÉTODO MEJORADO PARA GUARDAR JSON
     private void SaveDetectionsToJson()
     {
         if (_detectedObjectsList == null || _detectedObjectsList.Count == 0)
@@ -221,7 +209,6 @@ public class ObjectDetectionSample : MonoBehaviour
 
         try
         {
-            // ✅ CREAR DIRECTORIO SI NO EXISTE
             string directory = Path.GetDirectoryName(_jsonFilePath);
             if (!Directory.Exists(directory))
             {
@@ -229,7 +216,6 @@ public class ObjectDetectionSample : MonoBehaviour
                 Debug.Log($"📁 Directorio creado: {directory}");
             }
 
-            // ✅ CONVERTIR Y GUARDAR
             DetectionWrapper wrapper = new DetectionWrapper { detections = _detectedObjectsList };
             string jsonData = JsonUtility.ToJson(wrapper, true);
             
@@ -238,7 +224,6 @@ public class ObjectDetectionSample : MonoBehaviour
             
             Debug.Log($"💾 JSON guardado exitosamente: {_detectedObjectsList.Count} detecciones en {_jsonFilePath}");
             
-            // ✅ VERIFICAR QUE EL ARCHIVO SE CREÓ
             if (File.Exists(_jsonFilePath))
             {
                 FileInfo fileInfo = new FileInfo(_jsonFilePath);
@@ -252,7 +237,6 @@ public class ObjectDetectionSample : MonoBehaviour
         }
     }
 
-    // ✅ MÉTODOS PÚBLICOS PARA CONTROL MANUAL
     [ContextMenu("Guardar JSON Manualmente")]
     public void ManualSave()
     {
@@ -268,20 +252,17 @@ public class ObjectDetectionSample : MonoBehaviour
         Debug.Log("🗑️ Todas las detecciones han sido eliminadas");
     }
 
-    // ✅ Clase wrapper para la lista
     [System.Serializable]
     private class DetectionWrapper
     {
         public List<DetectedObjectData> detections = new List<DetectedObjectData>();
     }
 
-    // ✅ Método público mejorado para obtener detecciones
     public List<DetectedObjectData> GetDetectedObjects()
     {
-        return new List<DetectedObjectData>(_detectedObjectsList); // Retornar copia para evitar modificaciones externas
+        return new List<DetectedObjectData>(_detectedObjectsList);
     }
 
-    // ✅ INFORMACIÓN DE DEBUG
     [ContextMenu("Mostrar Información")]
     public void ShowDebugInfo()
     {

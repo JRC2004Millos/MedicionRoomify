@@ -255,7 +255,6 @@ public class DetectedCategoriesUI : MonoBehaviour
             {
                 OnCategorySelected.Invoke(category);
 
-                // ⬅️ AÑADE ESTO: llama directamente al loader
                 if (catalogLoader != null)
                     catalogLoader.ShowCategory(category);
             });
@@ -264,7 +263,6 @@ public class DetectedCategoriesUI : MonoBehaviour
 
     private string CategoryPrettyName(string raw)
     {
-        // Solo para mostrar bonito en español
         string s = raw.Trim().ToLowerInvariant();
         return s switch
         {

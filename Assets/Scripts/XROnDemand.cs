@@ -1,4 +1,3 @@
-// XROnDemand.cs  (ponlo en un GameObject vacío en SampleScene)
 using System.Collections;
 using UnityEngine;
 using UnityEngine.XR.Management;

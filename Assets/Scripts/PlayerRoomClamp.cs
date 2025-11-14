@@ -4,18 +4,18 @@ using UnityEngine;
 public class PlayerRoomClamp : MonoBehaviour
 {
     [Header("Refs")]
-    [SerializeField] RoomSpace room;      // arrastra tu RoomSpace
-    [SerializeField] RoomBuilder builder; // arrastra tu RoomBuilder
-    [SerializeField] CharacterController cc; // CharacterController en tu Main Camera
+    [SerializeField] RoomSpace room;
+    [SerializeField] RoomBuilder builder;
+    [SerializeField] CharacterController cc;
 
     [Header("Vertical control")]
-    public bool enableFreeVertical = true; // <- activa “fly”
-    public float verticalSpeed = 2.0f;     // m/s al subir/bajar
+    public bool enableFreeVertical = true;
+    public float verticalSpeed = 2.0f;
     public KeyCode upKey = KeyCode.Space;
     public KeyCode downKey = KeyCode.LeftControl;
 
     [Header("Comfort")]
-    public float eyeHeightIfNoCC = 1.6f;   // si no hay CC
+    public float eyeHeightIfNoCC = 1.6f;
     public float epsilon = 0.002f;
 
     void Reset()
@@ -29,11 +29,9 @@ public class PlayerRoomClamp : MonoBehaviour
     {
         if (!room) return;
 
-        // --- límites verticales del cuarto ---
-        float floorY = room.floorY; // viene de RoomSpace (piso), ya lo tienes aquí
-        float roomH = builder ? builder.RoomHeightMeters : 2.5f; // altura confiable
+        float floorY = room.floorY;
+        float roomH = builder ? builder.RoomHeightMeters : 2.5f;
 
-        // mitad de la “altura del jugador” (funciona con o sin CharacterController)
         float halfH = cc ? (cc.height * 0.5f) : (eyeHeightIfNoCC * 0.5f);
         float skin = cc ? Mathf.Max(0.02f, cc.skinWidth) : 0.05f;
 
@@ -42,7 +40,6 @@ public class PlayerRoomClamp : MonoBehaviour
 
         Vector3 pos = transform.position;
 
-        // --- control vertical libre (fly) opcional ---
         if (enableFreeVertical)
         {
             float v = 0f;
@@ -56,12 +53,10 @@ public class PlayerRoomClamp : MonoBehaviour
             }
         }
 
-        // Clamp final de Y
         pos.y = Mathf.Clamp(pos.y, minY, maxY);
 
-        // --- clamp XZ con tu RoomSpace ---
-        Vector3 clampedXZ = room.ClampWorldToInside(pos); // este método tiende a fijar Y = floorY
-        clampedXZ.y = pos.y; // recupera la Y recién clampeada
+        Vector3 clampedXZ = room.ClampWorldToInside(pos);
+        clampedXZ.y = pos.y;
 
         Vector3 delta = clampedXZ - transform.position;
         if (delta.sqrMagnitude > 1e-8f)

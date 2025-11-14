@@ -96,7 +96,6 @@ public class RoomDropPlacer : MonoBehaviour
         if (enableSnap)
             spawned.transform.position = SnapXZ(spawned.transform.position, gridSnap);
 
-        // 7) Empujar fuera de paredes si quedó tocándolas
         if (ResolveWallPenetration(spawned, wallMask, 0.05f, 15))
         {
             Debug.Log($"Empujado {spawned.name} fuera de pared");
@@ -104,10 +103,7 @@ public class RoomDropPlacer : MonoBehaviour
             AlignBaseToFloor(spawned, floorY);
         }
 
-        // 8) 🔴 NUEVO: asegurar que el mueble sea interactuable + collider real
-        // 8) asegurar que el mueble sea interactuable + collider usable en móvil
         {
-            // a) capa Furniture en todo el árbol
             int furnLayer = LayerMask.NameToLayer("Furniture");
             if (furnLayer >= 0)
             {
@@ -115,7 +111,6 @@ public class RoomDropPlacer : MonoBehaviour
                     t.gameObject.layer = furnLayer;
             }
 
-            // b) script FurnitureInteractable en la raíz
             var fi = spawned.GetComponent<FurnitureInteractable>();
             if (!fi)
                 fi = spawned.gameObject.AddComponent<FurnitureInteractable>();
@@ -123,13 +118,9 @@ public class RoomDropPlacer : MonoBehaviour
             if (string.IsNullOrEmpty(fi.furnitureId))
                 fi.furnitureId = prefab.name;
 
-            // c) Collider: NO usar MeshCollider, preferir BoxCollider
-            //    1. Si ya hay algún Collider en el prefab, lo dejamos.
-            //    2. Si no hay ninguno, creamos un BoxCollider ajustado al Renderer principal.
             var existingColliders = spawned.GetComponentsInChildren<Collider>(true);
             if (existingColliders == null || existingColliders.Length == 0)
             {
-                // Buscar un renderer para estimar el tamaño
                 Renderer rend = spawned.GetComponentInChildren<Renderer>();
                 if (rend != null)
                 {
@@ -137,10 +128,8 @@ public class RoomDropPlacer : MonoBehaviour
 
                     BoxCollider box = spawned.AddComponent<BoxCollider>();
 
-                    // center en coords locales
                     box.center = spawned.transform.InverseTransformPoint(b.center);
 
-                    // convertir tamaño de world a local usando la escala
                     Vector3 sizeWorld = b.size;
                     Vector3 lossy = spawned.transform.lossyScale;
                     Vector3 sizeLocal = new Vector3(
@@ -152,7 +141,6 @@ public class RoomDropPlacer : MonoBehaviour
                 }
                 else
                 {
-                    // Fallback muy simple si no hay renderer
                     spawned.AddComponent<BoxCollider>();
                 }
             }
@@ -175,15 +163,12 @@ public class RoomDropPlacer : MonoBehaviour
         var rends = go.GetComponentsInChildren<Renderer>();
         if (rends == null || rends.Length == 0) return;
 
-        // Calcular el bounding box total
         Bounds b = rends[0].bounds;
         for (int i = 1; i < rends.Length; i++)
             b.Encapsulate(rends[i].bounds);
 
-        // Cuánto mover en Y para que la base toque el piso
         float delta = floorY - b.min.y;
 
-        // Mover el objeto entero
         if (Mathf.Abs(delta) > 0.0001f)
             go.transform.position += new Vector3(0f, delta, 0f);
     }
@@ -204,15 +189,11 @@ public class RoomDropPlacer : MonoBehaviour
             for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
             return b;
         }
-        // si no tiene nada, devuelve un bounds vacío centrado en el objeto
         return new Bounds(go.transform.position, Vector3.zero);
     }
 
-    /* 1) Ajusta altura a un rango razonable (p.ej. 0.25–2.2 m)
-       2) Limita la huella (X/Z) para no ocupar más de un % del cuarto */
     void AutoScaleToRoom(GameObject go)
     {
-        // --- Paso A: normalizar altura ---
         var b = GetCombinedBounds(go);
         if (b.size.y > 1e-4f)
         {
@@ -225,27 +206,23 @@ public class RoomDropPlacer : MonoBehaviour
             if (Mathf.Abs(scale - 1f) > 1e-3f)
             {
                 go.transform.localScale *= scale;
-                b = GetCombinedBounds(go); // recomputar
+                b = GetCombinedBounds(go);
             }
         }
 
-        // --- Paso B: limitar huella al % del cuarto ---
-        // dimensiones del cuarto (en mundo) desde RoomSpace
         float roomW = Mathf.Abs(roomSpace.maxX - roomSpace.minX);
         float roomL = Mathf.Abs(roomSpace.maxZ - roomSpace.minZ);
 
         float maxW = roomW * maxFootprintPct;
         float maxL = roomL * maxFootprintPct;
 
-        // tamaño actual del objeto
         float w = b.size.x;
         float l = b.size.z;
 
-        // Si excede en X o Z, escalar uniformemente para que quepa
         float sX = (w > 1e-4f) ? (maxW / w) : 1f;
         float sZ = (l > 1e-4f) ? (maxL / l) : 1f;
 
-        float s = Mathf.Min(1f, sX, sZ); // solo reducimos, no agrandamos
+        float s = Mathf.Min(1f, sX, sZ);
         if (s < 0.999f)
         {
             go.transform.localScale *= s;

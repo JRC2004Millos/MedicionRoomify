@@ -55,7 +55,6 @@ public class RoomBuilder : MonoBehaviour
             return;
         }
 
-        // Materiales de respaldo
         if (floorMaterial == null)
         {
             var m = new Material(Shader.Find("Universal Render Pipeline/Lit"));
@@ -135,8 +134,7 @@ public class RoomBuilder : MonoBehaviour
         worldPoint = Vector3.zero;
         if (floorPolygon2D == null || floorPolygon2D.Count < 3) return false;
 
-        // Centroide de área de un polígono simple (fórmula de “shoelace”)
-        double A = 0.0; // 2 * area con signo
+        double A = 0.0;
         double Cx = 0.0;
         double Cz = 0.0;
         int n = floorPolygon2D.Count;
@@ -153,7 +151,7 @@ public class RoomBuilder : MonoBehaviour
             Cz += (zj + zi) * cross;
         }
 
-        if (Mathf.Approximately((float)A, 0f)) return false; // degenerado
+        if (Mathf.Approximately((float)A, 0f)) return false;
 
         A *= 0.5;
         double factor = 1.0 / (6.0 * A);

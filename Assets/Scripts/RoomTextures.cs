@@ -70,9 +70,6 @@ public class RoomTextures : MonoBehaviour
         FlushPending();
     }
 
-    // =======================
-    // API usada por RoomBuilder
-    // =======================
     public void ApplyOrQueueRenderer(MeshRenderer mr, SurfaceKind kind, Vector3 forward, Material fallback)
     {
         if (mr == null) return;
@@ -137,10 +134,6 @@ public class RoomTextures : MonoBehaviour
         _pending.Clear();
         Debug.Log($"[RoomTextures] Pendientes aplicados -> ok={ok}, fallback={fb}");
     }
-
-    // =======================
-    // Helpers
-    // =======================
 
     [Serializable] class TextureAssignmentItem { public string wall; public string pack; public string path; }
     [Serializable] class TextureAssignmentModel { public List<TextureAssignmentItem> items; }
@@ -279,7 +272,6 @@ public class RoomTextures : MonoBehaviour
         {
             var data = File.ReadAllBytes(path);
 
-            // 1) Cargar readable
             var tex = new Texture2D(2, 2, TextureFormat.RGBA32, /*mips*/ true, /*linear*/ !sRGB);
             if (!ImageConversion.LoadImage(tex, data, markNonReadable: false))
                 throw new Exception("LoadImage devolvió false");
@@ -287,15 +279,12 @@ public class RoomTextures : MonoBehaviour
             tex.name = Path.GetFileName(path);
             int w0 = tex.width, h0 = tex.height;
 
-            // 2) Downscale si hace falta (sigue readable dentro de esta función)
             tex = DownscaleIfNeeded(tex, MAX_TEX_SIZE, sRGB);
 
-            // 3) Ajustes de muestreo
             tex.wrapMode = TextureWrapMode.Repeat;
             tex.filterMode = FilterMode.Trilinear;
             tex.anisoLevel = 4;
 
-            // 4) Generar mips y marcar no-readable recién al final
             tex.Apply(updateMipmaps: true, makeNoLongerReadable: true);
 
             Debug.Log($"[RoomTextures] tex OK {tex.name} {w0}x{h0} -> {tex.width}x{tex.height}");
@@ -319,14 +308,12 @@ public class RoomTextures : MonoBehaviour
         int nw = Mathf.Max(2, Mathf.RoundToInt(w * k));
         int nh = Mathf.Max(2, Mathf.RoundToInt(h * k));
 
-        // rt con mips para que Unity genere pirámide al downscale
         var rt = new RenderTexture(nw, nh, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear)
         {
             useMipMap = true,
             autoGenerateMips = true
         };
 
-        // Guardar el RT activo
         var prev = RenderTexture.active;
         try
         {
@@ -335,15 +322,13 @@ public class RoomTextures : MonoBehaviour
 
             var dst = new Texture2D(nw, nh, TextureFormat.RGBA32, /*mips*/ true, /*linear*/ !sRGB);
             dst.ReadPixels(new Rect(0, 0, nw, nh), 0, 0);
-            // OJO: acá aún NO la marcamos no-readable; eso se hace en LoadTex -> Apply(..., true)
             dst.Apply(updateMipmaps: true, makeNoLongerReadable: false);
 
-            UnityEngine.Object.Destroy(src); // descarta la grande
+            UnityEngine.Object.Destroy(src);
             return dst;
         }
         finally
         {
-            // Restaurar SIEMPRE y limpiar sin dejar el RT activo
             RenderTexture.active = prev != null ? prev : null;
             if (RenderTexture.active == rt) RenderTexture.active = null;
             rt.Release();

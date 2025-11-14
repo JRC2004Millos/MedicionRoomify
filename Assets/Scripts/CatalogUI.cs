@@ -12,12 +12,12 @@ public class CatalogUI : MonoBehaviour
     public RoomDropPlacer dropPlacer;
 
     [Header("UI References")]
-    public RectTransform categoriesContent; // content del ScrollRect de categorías
-    public RectTransform itemsContent;      // content del ScrollRect de items
-    public GameObject categoryButtonPrefab; // UI_CategoryButton
-    public GameObject itemCardPrefab;       // UI_ItemCard
-    public Canvas dragCanvas;               // canvas para el ghost
-    public Image dragGhostImage;            // imagen que sigue el puntero
+    public RectTransform categoriesContent;
+    public RectTransform itemsContent;
+    public GameObject categoryButtonPrefab;
+    public GameObject itemCardPrefab;
+    public Canvas dragCanvas;
+    public Image dragGhostImage;
 
     private int currentCategoryIndex = -1;
     private readonly List<GameObject> _spawnedCategoryButtons = new();
@@ -43,7 +43,6 @@ public class CatalogUI : MonoBehaviour
             var go = Instantiate(categoryButtonPrefab, categoriesContent);
             _spawnedCategoryButtons.Add(go);
 
-            // Vincula UI
             var btn = go.GetComponent<Button>();
             var img = go.transform.Find("Icon")?.GetComponent<Image>();
             var txt = go.transform.Find("Label")?.GetComponent<TMPro.TextMeshProUGUI>();
@@ -72,7 +71,6 @@ public class CatalogUI : MonoBehaviour
             if (img) img.sprite = item.thumbnail;
             if (txt) txt.text = item.displayName;
 
-            // Drag handler
             var drag = go.AddComponent<UIItemDragHandler>();
             drag.Init(this, item);
         }
@@ -84,7 +82,6 @@ public class CatalogUI : MonoBehaviour
         list.Clear();
     }
 
-    // === API usada por UIItemDragHandler ===
     public void BeginDragItem(CatalogItem item, Vector2 screenPos)
     {
         if (dragGhostImage)
@@ -108,13 +105,11 @@ public class CatalogUI : MonoBehaviour
         {
             if (dropPlacer.TryPlaceAtPointer(item.prefab, screenPos, out var spawned))
             {
-                // (Opcional) seleccionar, aplicar escala inicial, etc.
             }
         }
     }
 }
 
-/// Componente que se acopla a cada tarjeta de item y maneja el drag
 public class UIItemDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
     private CatalogUI catalogUI;
