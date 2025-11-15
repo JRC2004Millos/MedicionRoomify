@@ -28,8 +28,18 @@ public class DetectedCategoriesUI : MonoBehaviour
     [SerializeField] private RectTransform barContainer;
     private bool _barHidden = false;
 
+    [Header("Guardar espacio")]
+    [SerializeField] private GameObject SaveButton;
+    [SerializeField] private GameObject saveDialogPanel;
+    [SerializeField] private TMP_InputField saveNameInput;
+    [SerializeField] private Button saveDialogConfirmButton;
+    [SerializeField] private Button saveDialogCancelButton;
+
+    [SerializeField] private RoomSaving roomSaving;
+
+    private Button _saveRuntimeButton;
+
     [Header("Full catalog mode")]
-    [Tooltip("Listado de TODAS las categorías disponibles (nombres como los que vienen del JSON).")]
     [SerializeField] private List<string> allCatalogCategories = new List<string>
     {
         "chair",
@@ -46,7 +56,44 @@ public class DetectedCategoriesUI : MonoBehaviour
 
     [SerializeField] private Button ConfirmButton;
     public static bool HasConfirmedAtLeastOnce = false;
-    private bool _showingDetectedOnly = true;
+
+    private enum BarMode
+    {
+        DetectedOnly,
+        FullCatalog
+    }
+
+    private BarMode _currentMode = BarMode.DetectedOnly;
+
+    private void Awake()
+    {
+        ConfirmButton = null;
+
+        if (categoriesContent != null)
+        {
+            foreach (var b in categoriesContent.GetComponentsInChildren<Button>(true))
+            {
+                if (b.name.IndexOf("confirm", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    ConfirmButton = b;
+                    break;
+                }
+            }
+        }
+
+        if (barContainer == null)
+        {
+            if (categoriesContent != null)
+            {
+                barContainer = categoriesContent.parent as RectTransform;
+            }
+
+            if (barContainer == null)
+            {
+                barContainer = GetComponent<RectTransform>();
+            }
+        }
+    }
 
     private void EnsureConfirmButtonAtStart()
     {
@@ -58,7 +105,6 @@ public class DetectedCategoriesUI : MonoBehaviour
 
         if (categoriesContent == null || categoryButtonPrefab == null)
         {
-            Debug.LogWarning("[DetectedCategoriesUI] No puedo crear ConfirmButton (falta categoriesContent o categoryButtonPrefab).");
             return;
         }
 
@@ -73,8 +119,6 @@ public class DetectedCategoriesUI : MonoBehaviour
 
         ConfirmButton = btn;
         ConfirmButton.transform.SetAsLastSibling();
-
-        Debug.Log("[DetectedCategoriesUI] ConfirmButton creado automáticamente");
     }
 
     private string ResolvePath()
@@ -85,21 +129,18 @@ public class DetectedCategoriesUI : MonoBehaviour
 #else
         if (!string.IsNullOrEmpty(absoluteJsonPathOverride)) return absoluteJsonPathOverride;
         string p1 = Path.Combine(Application.streamingAssetsPath, detectionsJsonFileName);
-                if (File.Exists(p1)) return p1;
+        if (File.Exists(p1)) return p1;
 
-                return Path.Combine(Application.dataPath, "StreamingAssets", detectionsJsonFileName);
-        #endif
+        return Path.Combine(Application.dataPath, "StreamingAssets", detectionsJsonFileName);
+#endif
     }
 
     private void OnEnable()
     {
-        _showingDetectedOnly = true;
-
         EnsureConfirmButtonAtStart();
 
         if (ConfirmButton != null)
         {
-            ConfirmButton.gameObject.SetActive(true);
             ConfirmButton.onClick.RemoveAllListeners();
             ConfirmButton.onClick.AddListener(OnConfirmClicked);
         }
@@ -108,10 +149,90 @@ public class DetectedCategoriesUI : MonoBehaviour
         {
             toggleBarButton.onClick.RemoveAllListeners();
             toggleBarButton.onClick.AddListener(ToggleBarVisibility);
-            toggleBarButton.gameObject.SetActive(false);
         }
 
-        BuildCategoriesFromJson();
+        if (saveDialogPanel != null)
+            saveDialogPanel.SetActive(false);
+
+        if (saveDialogConfirmButton != null)
+        {
+            saveDialogConfirmButton.onClick.RemoveAllListeners();
+            saveDialogConfirmButton.onClick.AddListener(OnSaveDialogConfirm);
+        }
+
+        if (saveDialogCancelButton != null)
+        {
+            saveDialogCancelButton.onClick.RemoveAllListeners();
+            saveDialogCancelButton.onClick.AddListener(OnSaveDialogCancel);
+        }
+
+        _currentMode = HasConfirmedAtLeastOnce ? BarMode.FullCatalog : BarMode.DetectedOnly;
+
+        RefreshBar();
+    }
+
+    private void Update()
+    {
+        if (_currentMode == BarMode.DetectedOnly && ConfirmButton != null)
+        {
+            if (!ConfirmButton.gameObject.activeSelf)
+                ConfirmButton.gameObject.SetActive(true);
+
+            if (!ConfirmButton.interactable)
+                ConfirmButton.interactable = true;
+
+            ConfirmButton.transform.SetAsLastSibling();
+        }
+
+        if (_currentMode == BarMode.FullCatalog)
+        {
+            if (_saveRuntimeButton == null || _saveRuntimeButton.gameObject == null)
+            {
+                EnsureSaveButtonForFullCatalog();
+            }
+            else
+            {
+                if (!_saveRuntimeButton.gameObject.activeSelf)
+                    _saveRuntimeButton.gameObject.SetActive(true);
+            }
+        }
+    }
+
+    private void RefreshBar()
+    {
+        if (_currentMode == BarMode.DetectedOnly)
+        {
+            if (ConfirmButton != null)
+                ConfirmButton.gameObject.SetActive(true);
+
+            if (toggleBarButton != null)
+                toggleBarButton.gameObject.SetActive(false);
+
+            BuildCategoriesFromJson();
+
+            if (_saveRuntimeButton != null && _saveRuntimeButton.gameObject != null)
+                _saveRuntimeButton.gameObject.SetActive(false);
+
+            if (SaveButton != null)
+                SaveButton.SetActive(false);
+        }
+        else
+        {
+            if (ConfirmButton != null)
+                ConfirmButton.gameObject.SetActive(false);
+
+            if (toggleBarButton != null)
+            {
+                _barHidden = false;
+                toggleBarButton.gameObject.SetActive(true);
+            }
+
+            BuildAllCategoriesBar();
+            EnsureSaveButtonForFullCatalog();
+
+            if (barContainer != null)
+                barContainer.gameObject.SetActive(true);
+        }
     }
 
     public void BuildCategoriesFromJson()
@@ -120,11 +241,9 @@ public class DetectedCategoriesUI : MonoBehaviour
 
         foreach (Transform t in categoriesContent)
         {
-            if (ConfirmButton != null)
-            {
-                if (t == ConfirmButton.transform || ConfirmButton.transform.IsChildOf(t))
-                    continue;
-            }
+            if (ConfirmButton != null &&
+                (t == ConfirmButton.transform || ConfirmButton.transform.IsChildOf(t)))
+                continue;
 
             Destroy(t.gameObject);
         }
@@ -132,7 +251,6 @@ public class DetectedCategoriesUI : MonoBehaviour
         string path = ResolvePath();
         if (!File.Exists(path))
         {
-            Debug.LogWarning($"[DetectedCategoriesUI] JSON no encontrado: {path}");
             return;
         }
 
@@ -151,66 +269,9 @@ public class DetectedCategoriesUI : MonoBehaviour
 
         if (ConfirmButton != null)
             ConfirmButton.transform.SetAsLastSibling();
-    }
 
-    private void Awake()
-    {
-        ConfirmButton = null;
-
-        foreach (var b in GetComponentsInChildren<Button>(true))
-        {
-            if (b.name.IndexOf("confirm", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                ConfirmButton = b;
-                Debug.Log($"[DetectedCategoriesUI] Auto-asignado ConfirmButton (instancia): {ConfirmButton.name}");
-                break;
-            }
-        }
-
-        if (ConfirmButton == null)
-            Debug.LogWarning("[DetectedCategoriesUI] No se encontró ningún botón de confirmar (hijo con 'confirm' en el nombre).");
-
-        if (barContainer == null)
-        {
-            if (categoriesContent != null)
-            {
-                barContainer = categoriesContent.parent as RectTransform;
-                if (barContainer != null)
-                    Debug.Log($"[DetectedCategoriesUI] Auto-asignado barContainer = {barContainer.name}");
-            }
-
-            if (barContainer == null)
-            {
-                barContainer = GetComponent<RectTransform>();
-                Debug.LogWarning("[DetectedCategoriesUI] barContainer no estaba asignado; uso el RectTransform propio.");
-            }
-        }
-    }
-
-    public void ForceFullCatalogMode()
-    {
-        _showingDetectedOnly = false;
-        BuildAllCategoriesBar();
-
-        if (ConfirmButton != null)
-            ConfirmButton.gameObject.SetActive(false);
-
-        if (toggleBarButton != null)
-        {
-            _barHidden = false;
-
-            if (barContainer != null)
-                barContainer.gameObject.SetActive(true);
-
-            toggleBarButton.gameObject.SetActive(true);
-        }
-    }
-
-    public void OnConfirmClicked()
-    {
-        Debug.Log("[DetectedCategoriesUI] Confirmar pulsado");
-        HasConfirmedAtLeastOnce = true;
-        ForceFullCatalogMode();
+        if (SaveButton != null)
+            SaveButton.SetActive(false);
     }
 
     private void BuildAllCategoriesBar()
@@ -219,11 +280,9 @@ public class DetectedCategoriesUI : MonoBehaviour
 
         foreach (Transform t in categoriesContent)
         {
-            if (ConfirmButton != null)
-            {
-                if (t == ConfirmButton.transform || ConfirmButton.transform.IsChildOf(t))
-                    continue;
-            }
+            if (ConfirmButton != null &&
+                (t == ConfirmButton.transform || ConfirmButton.transform.IsChildOf(t)))
+                continue;
 
             Destroy(t.gameObject);
         }
@@ -261,6 +320,132 @@ public class DetectedCategoriesUI : MonoBehaviour
         }
     }
 
+    public void OnConfirmClicked()
+    {
+        HasConfirmedAtLeastOnce = true;
+        _currentMode = BarMode.FullCatalog;
+        RefreshBar();
+    }
+
+    public void ForceFullCatalogMode()
+    {
+        HasConfirmedAtLeastOnce = true;
+        _currentMode = BarMode.FullCatalog;
+        RefreshBar();
+    }
+
+    private void ToggleBarVisibility()
+    {
+        if (_currentMode == BarMode.DetectedOnly)
+            return;
+
+        _barHidden = !_barHidden;
+
+        if (barContainer != null)
+        {
+            barContainer.gameObject.SetActive(!_barHidden);
+        }
+
+        if (toggleBarButton != null)
+        {
+            var txt = toggleBarButton.GetComponentInChildren<TMP_Text>();
+            if (txt != null)
+                txt.text = _barHidden ? "Mostrar" : "Ocultar";
+        }
+    }
+
+    private void OnSaveSpaceClicked()
+    {
+        if (_currentMode != BarMode.FullCatalog)
+            return;
+
+        if (saveDialogPanel != null)
+            saveDialogPanel.SetActive(true);
+
+        if (saveNameInput != null)
+            saveNameInput.text = "";
+    }
+
+    private void OnSaveDialogConfirm()
+    {
+        if (saveNameInput == null)
+        {
+            return;
+        }
+
+        string nombre = saveNameInput.text.Trim();
+        if (string.IsNullOrEmpty(nombre))
+        {
+            return;
+        }
+
+        if (roomSaving != null)
+        {
+            roomSaving.spaceName = nombre;
+            roomSaving.roomId = nombre;
+            roomSaving.saveFileName = nombre + ".json";
+            roomSaving.SaveRoom();
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+            Application.Quit();
+#endif
+        }
+
+        if (saveDialogPanel != null)
+            saveDialogPanel.SetActive(false);
+    }
+
+    private void OnSaveDialogCancel()
+    {
+        if (saveDialogPanel != null)
+            saveDialogPanel.SetActive(false);
+    }
+
+    private void EnsureSaveButtonForFullCatalog()
+    {
+        if (categoriesContent == null)
+        {
+            return;
+        }
+
+        GameObject prefab = null;
+
+        if (SaveButton != null)
+            prefab = SaveButton;
+        else if (categoryButtonPrefab != null)
+            prefab = categoryButtonPrefab;
+
+        if (prefab == null)
+        {
+            return;
+        }
+
+        if (_saveRuntimeButton == null || _saveRuntimeButton.gameObject == null)
+        {
+            var go = Instantiate(prefab, categoriesContent);
+            go.name = "SaveSpaceButton";
+
+            var txt = go.GetComponentInChildren<TMP_Text>(true);
+            if (txt != null)
+                txt.text = "Guardar";
+
+            var btn = go.GetComponent<Button>();
+            if (btn == null) btn = go.AddComponent<Button>();
+
+            _saveRuntimeButton = btn;
+            _saveRuntimeButton.onClick.RemoveAllListeners();
+            _saveRuntimeButton.onClick.AddListener(OnSaveSpaceClicked);
+        }
+        else
+        {
+            _saveRuntimeButton.onClick.RemoveAllListeners();
+            _saveRuntimeButton.onClick.AddListener(OnSaveSpaceClicked);
+        }
+
+        _saveRuntimeButton.gameObject.SetActive(true);
+        _saveRuntimeButton.transform.SetAsLastSibling();
+    }
+
     private string CategoryPrettyName(string raw)
     {
         string s = raw.Trim().ToLowerInvariant();
@@ -276,27 +461,6 @@ public class DetectedCategoriesUI : MonoBehaviour
             "plant" => "Planta",
             _ => char.ToUpper(raw[0]) + raw.Substring(1)
         };
-    }
-
-    private void ToggleBarVisibility()
-    {
-        if (_showingDetectedOnly)
-            return;
-
-        _barHidden = !_barHidden;
-
-        if (barContainer != null)
-        {
-            barContainer.gameObject.SetActive(!_barHidden);
-            Debug.Log($"[DetectedCategoriesUI] ToggleBarVisibility -> barHidden={_barHidden}, target={barContainer.name}");
-        }
-
-        if (toggleBarButton != null)
-        {
-            var txt = toggleBarButton.GetComponentInChildren<TMP_Text>();
-            if (txt != null)
-                txt.text = _barHidden ? "Mostrar" : "Ocultar";
-        }
     }
 
     [System.Serializable] public class DetectionWrapper { public List<DetectionEntry> detections; }
