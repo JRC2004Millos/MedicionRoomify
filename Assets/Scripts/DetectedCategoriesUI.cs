@@ -30,14 +30,13 @@ public class DetectedCategoriesUI : MonoBehaviour
 
     [Header("Guardar espacio")]
     [SerializeField] private GameObject SaveButton;
+    private Button _saveRuntimeButton;
     [SerializeField] private GameObject saveDialogPanel;
     [SerializeField] private TMP_InputField saveNameInput;
     [SerializeField] private Button saveDialogConfirmButton;
     [SerializeField] private Button saveDialogCancelButton;
 
     [SerializeField] private RoomSaving roomSaving;
-
-    private Button _saveRuntimeButton;
 
     [Header("Full catalog mode")]
     [SerializeField] private List<string> allCatalogCategories = new List<string>
@@ -369,43 +368,90 @@ public class DetectedCategoriesUI : MonoBehaviour
 
     private void OnSaveSpaceClicked()
     {
+        Debug.Log("[DetectedCategoriesUI] OnSaveSpaceClicked()");
+
         if (_currentMode != BarMode.FullCatalog)
+        {
+            Debug.LogWarning("[DetectedCategoriesUI] Ignorando guardado: no estamos en FullCatalog.");
             return;
+        }
 
         if (saveDialogPanel != null)
+        {
             saveDialogPanel.SetActive(true);
+            Debug.Log("[DetectedCategoriesUI] Mostrando panel de guardado.");
+        }
+        else
+        {
+            Debug.LogError("[DetectedCategoriesUI] saveDialogPanel es NULL, asígnalo en el inspector.");
+        }
 
         if (saveNameInput != null)
             saveNameInput.text = "";
+        else
+            Debug.LogError("[DetectedCategoriesUI] saveNameInput es NULL, asígnalo en el inspector.");
     }
 
     private void OnSaveDialogConfirm()
     {
+        Debug.Log("[DetectedCategoriesUI] OnSaveDialogConfirm() llamado.");
+
         if (saveNameInput == null)
         {
+            Debug.LogError("[DetectedCategoriesUI] saveNameInput es NULL, revisa la referencia en el inspector.");
             return;
         }
 
         string nombre = saveNameInput.text.Trim();
+        Debug.Log($"[DetectedCategoriesUI] Texto recibido en el input: '{nombre}'");
+
         if (string.IsNullOrEmpty(nombre))
         {
+            Debug.LogWarning("[DetectedCategoriesUI] Nombre vacío, no se guarda.");
             return;
         }
 
-        if (roomSaving != null)
+        if (roomSaving == null)
         {
-            roomSaving.spaceName = nombre;
-            roomSaving.roomId = nombre;
-            roomSaving.saveFileName = nombre + ".json";
-            roomSaving.SaveRoom();
+            Debug.LogError("[DetectedCategoriesUI] roomSaving es NULL, asigna el componente RoomSaving en el inspector.");
+        }
+        else
+        {
+            Debug.Log("[DetectedCategoriesUI] roomSaving encontrado, procediendo a guardar...");
 
-#if UNITY_ANDROID && !UNITY_EDITOR
-            Application.Quit();
-#endif
+            roomSaving.spaceName   = nombre;
+            roomSaving.roomId      = nombre;
+            roomSaving.saveFileName = nombre + ".json";
+
+            try
+            {
+                roomSaving.SaveRoom();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("[DetectedCategoriesUI] Excepción al llamar a SaveRoom(): " + ex);
+            }
         }
 
+    #if UNITY_ANDROID && !UNITY_EDITOR
+        Debug.Log("[DetectedCategoriesUI] En Android: llamando a Application.Quit().");
+        Application.Quit();
+    #endif
+
+    #if UNITY_EDITOR
+        Debug.Log("[DetectedCategoriesUI] En Editor: deteniendo modo Play.");
+        UnityEditor.EditorApplication.isPlaying = false;
+    #endif
+
         if (saveDialogPanel != null)
+        {
             saveDialogPanel.SetActive(false);
+            Debug.Log("[DetectedCategoriesUI] Ocultando panel de guardado.");
+        }
+        else
+        {
+            Debug.LogWarning("[DetectedCategoriesUI] saveDialogPanel es NULL al intentar ocultarlo.");
+        }
     }
 
     private void OnSaveDialogCancel()

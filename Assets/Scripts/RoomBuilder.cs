@@ -8,7 +8,6 @@ using UnityEngine;
 public class RoomBuilder : MonoBehaviour
 {
     [Header("Editor only (pruebas)")]
-    [Tooltip("Ruta absoluta al JSON cuando pruebas en el Editor.")]
     public string editorJsonPath;
 
     [Header("Opciones de render")]

@@ -73,7 +73,7 @@ public class RoomSaving : MonoBehaviour
             ? $"{roomId}_layout.json"
             : saveFileName;
 
-        string baseDir = Path.Combine(Application.persistentDataPath, "saved_rooms");
+        string baseDir = Path.Combine(Application.persistentDataPath, "Modelos");
         if (!Directory.Exists(baseDir))
             Directory.CreateDirectory(baseDir);
 
@@ -82,7 +82,7 @@ public class RoomSaving : MonoBehaviour
         try
         {
             File.WriteAllText(path, json);
-            Debug.Log($"[RoomSaving] Diseño guardado en:\n{path}\nJSON:\n{json}");
+            Debug.Log($"[RoomSaving] Modelo guardado en:\n{path}\nJSON:\n{json}");
         }
         catch (Exception e)
         {
