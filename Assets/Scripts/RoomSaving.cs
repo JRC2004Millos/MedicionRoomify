@@ -34,6 +34,8 @@ public class RoomSaving : MonoBehaviour
         };
 
         string geoPath = Path.Combine(Application.persistentDataPath, ROOM_DATA_FILE_NAME);
+        string texPath = Path.Combine(Application.persistentDataPath, TEXTURES_MODEL_FILE_NAME);
+
         if (File.Exists(geoPath))
         {
             try
@@ -52,7 +54,6 @@ public class RoomSaving : MonoBehaviour
             Debug.LogWarning("[RoomSaving] No se encontró room_data.json en: " + geoPath);
         }
 
-        string texPath = Path.Combine(Application.persistentDataPath, TEXTURES_MODEL_FILE_NAME);
         if (File.Exists(texPath))
         {
             try
@@ -131,15 +132,37 @@ public class RoomSaving : MonoBehaviour
         {
             File.WriteAllText(finalPath, json);
             Debug.Log($"[RoomSaving] Modelo guardado en:\n{finalPath}\nJSON:\n{json}");
+
+            CleanupSourceFiles(geoPath, texPath);
         }
         catch (Exception e)
         {
             Debug.LogError("[RoomSaving] Error al guardar JSON: " + e.Message);
         }
     }
-}
 
-#region --- CLASES SERIALIZABLES ---
+    private void CleanupSourceFiles(string geoPath, string texPath)
+    {
+        try
+        {
+            if (File.Exists(geoPath))
+            {
+                File.Delete(geoPath);
+                Debug.Log("[RoomSaving] room_data.json borrado: " + geoPath);
+            }
+
+            if (File.Exists(texPath))
+            {
+                File.Delete(texPath);
+                Debug.Log("[RoomSaving] textures_model.json borrado: " + texPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("[RoomSaving] No se pudieron borrar los archivos fuente: " + ex.Message);
+        }
+    }
+}
 
 [Serializable]
 public class CombinedTextureData
@@ -174,5 +197,3 @@ public class FinalRoomModel
     public List<CombinedTextureData> textures;
     public List<FurnitureItemData> items;
 }
-
-#endregion

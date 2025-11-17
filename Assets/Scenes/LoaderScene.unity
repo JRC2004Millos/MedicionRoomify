@@ -782,50 +782,6 @@ MonoBehaviour:
   invalidColor: {r: 1, g: 0, b: 0, a: 0.5}
   furnitureLayerName: Furniture
   forceBoxCollider: 1
---- !u!1 &374689399
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 374689401}
-  - component: {fileID: 374689400}
-  m_Layer: 0
-  m_Name: RoomTextures
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &374689400
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 374689399}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1eb2df34586b71746a4c48a90c32b7f2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!4 &374689401
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 374689399}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &450648406
 GameObject:
   m_ObjectHideFlags: 0
@@ -1234,6 +1190,11 @@ MonoBehaviour:
   layoutOverridePath: 
   sceneSurfaces: []
   furniturePrefabs: []
+  wallThickness: 0.1
+  defaultFloorMaterial: {fileID: 0}
+  defaultWallMaterial: {fileID: 0}
+  roomSpace: {fileID: 0}
+  modelsBasePath: 
 --- !u!4 &758119725
 Transform:
   m_ObjectHideFlags: 0
@@ -1415,6 +1376,11 @@ MonoBehaviour:
   layoutOverridePath: 
   sceneSurfaces: []
   furniturePrefabs: []
+  wallThickness: 0.1
+  defaultFloorMaterial: {fileID: 0}
+  defaultWallMaterial: {fileID: 0}
+  roomSpace: {fileID: 0}
+  modelsBasePath: 
 --- !u!4 &860611094
 Transform:
   m_ObjectHideFlags: 0
@@ -2141,7 +2107,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   room: {fileID: 893664012}
-  builder: {fileID: 1781436037}
+  builder: {fileID: 0}
   cc: {fileID: 1057308861}
   enableFreeVertical: 1
   verticalSpeed: 2
@@ -3533,83 +3499,6 @@ RectTransform:
   m_AnchoredPosition: {x: 80, y: -50}
   m_SizeDelta: {x: 160, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!1 &1781436036
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1781436038}
-  - component: {fileID: 1781436037}
-  - component: {fileID: 1781436039}
-  m_Layer: 0
-  m_Name: RoomBuilder
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1781436037
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1781436036}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ee77fc00125ee4241aa9a58b98863026, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  editorJsonPath: Assets/StreamingAssets/room_data.json
-  wallThickness: 0.05
-  floorMaterial: {fileID: 0}
-  wallMaterial: {fileID: 0}
---- !u!4 &1781436038
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1781436036}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.18253, y: 3.11885, z: 2.06436}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1781436039
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1781436036}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e63da883cd4a3544930ac75fb08ceb2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  runOnStart: 1
-  wallDefaultMat: {fileID: 2100000, guid: fc226930e8fad4c499969204cecfbc05, type: 2}
-  floorDefaultMat: {fileID: 2100000, guid: 8f2dd096093cb47ae8b94ec8a6bf5e40, type: 2}
-  ceilingDefaultMat: {fileID: 2100000, guid: c02020fe6690f4b3cb5b6001f36547ee, type: 2}
-  floorKeywords:
-  - floor
-  - piso
-  wallKeywords:
-  - wall
-  - pared
-  ceilKeywords:
-  - ceiling
-  - techo
-  defaultCeilingHeight: 2.6
-  createCeilingIfMissing: 1
-  ceilingObjectName: Ceiling
 --- !u!1 &1837224563
 GameObject:
   m_ObjectHideFlags: 0
@@ -4180,8 +4069,6 @@ SceneRoots:
   m_Roots:
   - {fileID: 1057308858}
   - {fileID: 1676330202}
-  - {fileID: 1781436038}
-  - {fileID: 374689401}
   - {fileID: 308675087}
   - {fileID: 893664013}
   - {fileID: 1164014490}
