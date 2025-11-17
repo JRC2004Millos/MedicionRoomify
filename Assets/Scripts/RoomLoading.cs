@@ -3,24 +3,15 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-/// <summary>
-/// Carga el estado de una habitación desde un JSON generado por RoomSaving:
-/// - Aplica texturas a paredes/piso/techo.
-/// - Reconstruye los muebles en la escena.
-/// Debe existir un archivo JSON compatible con RoomSaveData.
-/// </summary>
 public class RoomLoading : MonoBehaviour
 {
     [Header("Ruta de layout (opcional)")]
-    [Tooltip("Si se deja vacío en Android, se usa el Intent extra 'ROOM_LAYOUT_PATH'.")]
     public string layoutOverridePath = "";
 
     [Header("Superficies presentes en la escena")]
-    [Tooltip("Paredes, piso y techo que deben recibir las texturas cargadas.")]
     public List<SurfaceBinding> sceneSurfaces = new List<SurfaceBinding>();
 
     [Header("Prefabs de muebles disponibles")]
-    [Tooltip("Mapea prefabName (del JSON) con el prefab real en Unity.")]
     public List<FurniturePrefabEntry> furniturePrefabs = new List<FurniturePrefabEntry>();
 
     private Dictionary<string, SurfaceBinding> _surfaceMap;
@@ -51,20 +42,20 @@ public class RoomLoading : MonoBehaviour
         Debug.Log("[RoomLoading] Cargando layout desde: " + path);
 
         string json = File.ReadAllText(path);
-        RoomSaveData data = null;
+        FinalRoomModel data = null;
         try
         {
-            data = JsonUtility.FromJson<RoomSaveData>(json);
+            data = JsonUtility.FromJson<FinalRoomModel>(json);
         }
         catch (Exception e)
         {
-            Debug.LogError("[RoomLoading] Error al parsear JSON: " + e.Message);
+            Debug.LogError("[RoomLoading] Error al parsear FinalRoomModel: " + e.Message);
             return;
         }
 
         if (data == null)
         {
-            Debug.LogError("[RoomLoading] RoomSaveData nulo al deserializar JSON.");
+            Debug.LogError("[RoomLoading] FinalRoomModel nulo al deserializar JSON.");
             return;
         }
 
@@ -74,9 +65,6 @@ public class RoomLoading : MonoBehaviour
         RebuildFurniture(data);
     }
 
-    /// <summary>
-    /// Resuelve la ruta del JSON de layout.
-    /// </summary>
     private string ResolveLayoutPath()
     {
         if (!string.IsNullOrEmpty(layoutOverridePath))
@@ -107,13 +95,9 @@ public class RoomLoading : MonoBehaviour
 
         return null;
 #else
-        // Para pruebas en el editor, puedes poner aquí una ruta absoluta
-        // o arrastrarla en layoutOverridePath desde el Inspector.
         return layoutOverridePath;
 #endif
     }
-
-    #region Maps auxiliares
 
     private void BuildSurfaceMap()
     {
@@ -175,11 +159,7 @@ public class RoomLoading : MonoBehaviour
         return null;
     }
 
-    #endregion
-
-    #region Aplicar texturas
-
-    private void ApplyTextures(RoomSaveData data)
+    private void ApplyTextures(FinalRoomModel data)
     {
         if (data.textures == null || data.textures.Count == 0)
         {
@@ -189,46 +169,26 @@ public class RoomLoading : MonoBehaviour
 
         foreach (var t in data.textures)
         {
-            if (t == null || string.IsNullOrEmpty(t.surfaceId)) continue;
+            if (t == null || string.IsNullOrEmpty(t.wall)) continue;
 
-            var binding = GetSurfaceBinding(t.surfaceId);
+            var binding = GetSurfaceBinding(t.wall);
             if (binding == null || binding.renderer == null)
                 continue;
-
-            // Aquí es donde conectas TU pipeline de PBR.
-            // t.path es el directorio del pack PBR (ej: .../pbrpacks/Plaster001_2K-PNG).
-            // Puedes cargar las texturas (albedo, normal, roughness, etc.) desde ese path
-            // y asignarlas al material del renderer.
 
             ApplyPbrPackToRenderer(binding.renderer, t.path, t.pack);
         }
     }
 
-    /// <summary>
-    /// Stub donde conectas tu lógica real de carga de PBR.
-    /// </summary>
     private void ApplyPbrPackToRenderer(Renderer renderer, string packPath, string packName)
     {
         if (renderer == null)
             return;
 
-        Debug.Log($"[RoomLoading] (TODO) Aplicar PBR pack='{packName}' desde '{packPath}' a '{renderer.gameObject.name}'");
-
-        // TODO:
-        // - Usar tus métodos existentes para cargar texturas desde packPath.
-        // - Asignarlas al material del renderer.
-        //
-        // Ejemplo muy simplificado (si tuvieras una clase estática):
-        // PbrLoader.ApplyPack(renderer, packPath);
+        Debug.Log($"[RoomLoading] Aplicar PBR pack='{packName}' desde '{packPath}' a '{renderer.gameObject.name}'");
     }
 
-    #endregion
-
-    #region Reconstruir muebles
-
-    private void RebuildFurniture(RoomSaveData data)
+    private void RebuildFurniture(FinalRoomModel data)
     {
-        // 1. Borrar muebles actuales
         ClearExistingFurniture();
 
         if (data.items == null || data.items.Count == 0)
@@ -248,8 +208,6 @@ public class RoomLoading : MonoBehaviour
 
             var instance = Instantiate(prefab, item.position, item.rotation);
             instance.transform.localScale = item.scale;
-
-            // Asegurar el tag "Furniture" para futuras guardadas
             instance.tag = "Furniture";
         }
     }
@@ -262,30 +220,18 @@ public class RoomLoading : MonoBehaviour
             Destroy(go);
         }
     }
-
-    #endregion
 }
-
-#region Clases auxiliares para el inspector
 
 [Serializable]
 public class SurfaceBinding
 {
-    [Tooltip("ID lógico de la superficie, debe coincidir con surfaceId de SurfaceTextureData (ej: 'Pared de B a C (north)', 'floor', 'ceiling').")]
     public string surfaceId;
-
-    [Tooltip("Renderer al que se le aplicará la textura PBR.")]
     public Renderer renderer;
 }
 
 [Serializable]
 public class FurniturePrefabEntry
 {
-    [Tooltip("Nombre del prefab tal como aparece en prefabName dentro del JSON.")]
     public string prefabName;
-
-    [Tooltip("Prefab real en Unity que se instanciará.")]
     public GameObject prefab;
 }
-
-#endregion

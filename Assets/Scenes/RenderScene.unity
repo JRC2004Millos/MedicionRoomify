@@ -2299,6 +2299,7 @@ MonoBehaviour:
   spaceName: 
   saveFileName: 
   surfaceEntries: []
+  furnitureTag: Furniture
 --- !u!4 &1299156370
 Transform:
   m_ObjectHideFlags: 0
@@ -3701,6 +3702,7 @@ MonoBehaviour:
   spaceName: 
   saveFileName: 
   surfaceEntries: []
+  furnitureTag: Furniture
 --- !u!1 &1844953792
 GameObject:
   m_ObjectHideFlags: 0

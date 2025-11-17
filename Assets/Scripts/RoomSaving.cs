@@ -6,48 +6,98 @@ using UnityEngine;
 public class RoomSaving : MonoBehaviour
 {
     [Header("Identificador interno de la habitación")]
-    [Tooltip("Puedes usar un ID interno (ej: habitacion_001).")]
     public string roomId = "habitacion_001";
 
     [Header("Nombre visible del espacio")]
-    [Tooltip("Nombre que escribió el usuario (Sala, Cuarto, Oficina, etc.)")]
     public string spaceName = "";
 
     [Header("Nombre del archivo (opcional)")]
-    [Tooltip("Si lo dejas vacío, se usará: {roomId}_layout.json")]
     public string saveFileName = "";
 
-    [Header("Superficies a guardar (paredes, piso, techo)")]
-    [Tooltip("Configura aquí las superficies que existen en la escena")]
-    public List<SurfaceEntry> surfaceEntries = new List<SurfaceEntry>();
+    [Header("Objetos a guardar")]
+    [Tooltip("Nombre de la Tag que usan los muebles colocados en la escena (deja vacío para no guardar objetos).")]
+    public string furnitureTag = "Furniture";
+
+    private const string ROOM_DATA_FILE_NAME      = "room_data.json";
+    private const string TEXTURES_MODEL_FILE_NAME = "textures_model.json";
+
 
     public void SaveRoom()
     {
-        RoomSaveData data = new RoomSaveData();
-
-        data.roomId    = roomId;
-        data.spaceName = string.IsNullOrEmpty(spaceName) ? roomId : spaceName;
-
-        foreach (var s in surfaceEntries)
+        FinalRoomModel data = new FinalRoomModel
         {
-            if (string.IsNullOrEmpty(s.surfaceId))
+            roomId    = roomId,
+            spaceName = string.IsNullOrEmpty(spaceName) ? roomId : spaceName,
+            geometry  = null,
+            textures  = new List<CombinedTextureData>(),
+            items     = new List<FurnitureItemData>()
+        };
+
+        string geoPath = Path.Combine(Application.persistentDataPath, ROOM_DATA_FILE_NAME);
+        if (File.Exists(geoPath))
+        {
+            try
             {
-                Debug.LogWarning("[RoomSaving] SurfaceEntry con surfaceId vacío, lo omito.");
-                continue;
+                string geoText = File.ReadAllText(geoPath);
+                RoomData geo = JsonUtility.FromJson<RoomData>(geoText);
+                data.geometry = geo;
             }
-
-            SurfaceTextureData texData = new SurfaceTextureData
+            catch (Exception ex)
             {
-                surfaceId = s.surfaceId,
-                pack      = s.packName,
-                path      = s.localPath
-            };
-
-            data.textures.Add(texData);
+                Debug.LogError("[RoomSaving] Error leyendo room_data.json: " + ex.Message);
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[RoomSaving] No se encontró room_data.json en: " + geoPath);
         }
 
-        GameObject[] furnitureObjects = GameObject.FindGameObjectsWithTag("Furniture");
+        string texPath = Path.Combine(Application.persistentDataPath, TEXTURES_MODEL_FILE_NAME);
+        if (File.Exists(texPath))
+        {
+            try
+            {
+                string texText = File.ReadAllText(texPath);
+                TextureModelRoot texRoot = JsonUtility.FromJson<TextureModelRoot>(texText);
 
+                if (texRoot != null && texRoot.items != null)
+                {
+                    foreach (var it in texRoot.items)
+                    {
+                        data.textures.Add(new CombinedTextureData
+                        {
+                            wall = it.wall,
+                            pack = it.pack,
+                            path = it.path
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("[RoomSaving] Error al leer textures_model.json: " + ex.Message);
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[RoomSaving] No se encontró textures_model.json en: " + texPath);
+        }
+
+        GameObject[] furnitureObjects = Array.Empty<GameObject>();
+
+        if (!string.IsNullOrEmpty(furnitureTag))
+        {
+            try
+            {
+                furnitureObjects = GameObject.FindGameObjectsWithTag(furnitureTag);
+            }
+            catch (UnityException ex)
+            {
+                Debug.LogWarning($"[RoomSaving] La tag '{furnitureTag}' no existe. No se guardarán muebles. Detalle: {ex.Message}");
+            }
+        }
+
+        Debug.Log("[RoomSaving] Muebles encontrados con tag '" + furnitureTag + "': " + furnitureObjects.Length);
         foreach (var go in furnitureObjects)
         {
             FurnitureItemData item = new FurnitureItemData();
@@ -55,9 +105,7 @@ public class RoomSaving : MonoBehaviour
             string prefabName = go.name;
             int cloneIndex = prefabName.IndexOf("(Clone)", StringComparison.Ordinal);
             if (cloneIndex > 0)
-            {
                 prefabName = prefabName.Substring(0, cloneIndex);
-            }
 
             item.prefabName = prefabName;
             item.position   = go.transform.position;
@@ -77,12 +125,12 @@ public class RoomSaving : MonoBehaviour
         if (!Directory.Exists(baseDir))
             Directory.CreateDirectory(baseDir);
 
-        string path = Path.Combine(baseDir, fileName);
+        string finalPath = Path.Combine(baseDir, fileName);
 
         try
         {
-            File.WriteAllText(path, json);
-            Debug.Log($"[RoomSaving] Modelo guardado en:\n{path}\nJSON:\n{json}");
+            File.WriteAllText(finalPath, json);
+            Debug.Log($"[RoomSaving] Modelo guardado en:\n{finalPath}\nJSON:\n{json}");
         }
         catch (Exception e)
         {
@@ -91,39 +139,40 @@ public class RoomSaving : MonoBehaviour
     }
 }
 
-[Serializable]
-public class FurnitureItemData
-{
-    public string prefabName;
-    public Vector3 position;
-    public Quaternion rotation;
-    public Vector3 scale;
-}
+#region --- CLASES SERIALIZABLES ---
 
 [Serializable]
-public class SurfaceTextureData
+public class CombinedTextureData
 {
-    public string surfaceId;
+    public string wall;
     public string pack;
     public string path;
 }
 
 [Serializable]
-public class RoomSaveData
+public class TextureModelRoot
 {
-    public string roomId;
-    public string spaceName;
-    public List<SurfaceTextureData> textures = new List<SurfaceTextureData>();
-    public List<FurnitureItemData> items     = new List<FurnitureItemData>();
+    public string project;
+    public List<CombinedTextureData> items;
 }
 
 [Serializable]
-public class SurfaceEntry
+public class FurnitureItemData
 {
-    [Tooltip("ID de la superficie (debe coincidir con el usado en tus JSON, ej: 'Pared de B a C (north)')")]
-    public string surfaceId;
-    [Tooltip("Nombre del pack PBR asignado a esta superficie")]
-    public string packName;
-    [Tooltip("Ruta local donde está el pack PBR")]
-    public string localPath;
+    public string    prefabName;
+    public Vector3   position;
+    public Quaternion rotation;
+    public Vector3   scale;
 }
+
+[Serializable]
+public class FinalRoomModel
+{
+    public string roomId;
+    public string spaceName;
+    public RoomData geometry;
+    public List<CombinedTextureData> textures;
+    public List<FurnitureItemData> items;
+}
+
+#endregion

@@ -111,6 +111,8 @@ public class RoomDropPlacer : MonoBehaviour
                     t.gameObject.layer = furnLayer;
             }
 
+            spawned.tag = "Furniture";
+
             var fi = spawned.GetComponent<FurnitureInteractable>();
             if (!fi)
                 fi = spawned.gameObject.AddComponent<FurnitureInteractable>();
@@ -145,8 +147,6 @@ public class RoomDropPlacer : MonoBehaviour
                 }
             }
         }
-
-
         return true;
     }
 

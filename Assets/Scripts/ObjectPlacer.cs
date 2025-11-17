@@ -170,11 +170,10 @@ public class ObjectPlacer : MonoBehaviour
             SetLayerRecursively(root, furnitureLayer);
         }
 
+        root.tag = "Furniture";
+
         var meshColliders = root.GetComponentsInChildren<MeshCollider>(true);
-        foreach (var mc in meshColliders)
-        {
-            Destroy(mc);
-        }
+        foreach (var mc in meshColliders) Destroy(mc);
 
         if (forceBoxCollider)
         {
@@ -197,6 +196,18 @@ public class ObjectPlacer : MonoBehaviour
         }
     }
 
+    bool IsTagDefined(string tag)
+    {
+        try
+        {
+            var t = GameObject.FindGameObjectsWithTag(tag);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
     void SetLayerRecursively(GameObject obj, int layer)
     {
         obj.layer = layer;
