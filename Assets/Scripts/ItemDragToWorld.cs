@@ -7,24 +7,20 @@ public class ItemDragToWorld : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     [Header("World drop")]
     [SerializeField] private RoomDropPlacer dropPlacer;
 
-    [Header("Ghost UI")]
-    [SerializeField] private Image dragGhostImage;
-
     [Header("Item")]
     [SerializeField] private GameObject itemPrefab;
     [SerializeField] private Image itemThumb;
 
-    Camera cam;
+    private Camera cam;
 
     void Awake()
     {
-        if (!dropPlacer) dropPlacer = FindObjectOfType<RoomDropPlacer>();
-        if (!dragGhostImage)
-        {
-            var go = GameObject.Find("DragGhostImage");
-            if (go) dragGhostImage = go.GetComponent<Image>();
-        }
-        if (!itemThumb) itemThumb = GetComponentInChildren<Image>(true);
+        if (!dropPlacer)
+            dropPlacer = FindObjectOfType<RoomDropPlacer>();
+
+        if (!itemThumb)
+            itemThumb = GetComponentInChildren<Image>(true);
+
         cam = Camera.main;
     }
 
@@ -32,22 +28,18 @@ public class ItemDragToWorld : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (!dragGhostImage || !itemThumb) return;
-        dragGhostImage.sprite = itemThumb.sprite;
-        dragGhostImage.rectTransform.sizeDelta = itemThumb.rectTransform.sizeDelta;
-        dragGhostImage.transform.position = eventData.position;
-        dragGhostImage.gameObject.SetActive(true);
+        if (!dropPlacer || !itemPrefab)
+            return;
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (dragGhostImage) dragGhostImage.transform.position = eventData.position;
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        if (dragGhostImage) dragGhostImage.gameObject.SetActive(false);
-        if (!dropPlacer || !itemPrefab) return;
+        if (!dropPlacer || !itemPrefab)
+            return;
 
         if (dropPlacer.TryPlaceAtPointer(itemPrefab, eventData.position, out var spawned))
         {

@@ -198,12 +198,25 @@ public class DetectedCategoriesUI : MonoBehaviour
         }
     }
 
-    private void RefreshBar()
+    public void RefreshBar()
     {
         if (_currentMode == BarMode.DetectedOnly)
         {
+            if (ConfirmButton == null || ConfirmButton.gameObject == null)
+            {
+                EnsureConfirmButtonAtStart();
+            }
+
             if (ConfirmButton != null)
+            {
                 ConfirmButton.gameObject.SetActive(true);
+                ConfirmButton.interactable = true;
+
+                ConfirmButton.onClick.RemoveAllListeners();
+                ConfirmButton.onClick.AddListener(OnConfirmClicked);
+
+                ConfirmButton.transform.SetAsLastSibling();
+            }
 
             if (toggleBarButton != null)
                 toggleBarButton.gameObject.SetActive(false);

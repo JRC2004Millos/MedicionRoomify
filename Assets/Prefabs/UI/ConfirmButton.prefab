@@ -100,11 +100,11 @@ MonoBehaviour:
     m_SelectOnRight: {fileID: 0}
   m_Transition: 1
   m_Colors:
-    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
-    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
-    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
-    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
-    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_NormalColor: {r: 0.7490196, g: 0.5176471, b: 0.3372549, a: 1}
+    m_HighlightedColor: {r: 0.7490196, g: 0.5176471, b: 0.3372549, a: 1}
+    m_PressedColor: {r: 0.6392157, g: 0.34117648, b: 0.10980392, a: 1}
+    m_SelectedColor: {r: 0.7490196, g: 0.5176471, b: 0.3372549, a: 1}
+    m_DisabledColor: {r: 0.6392157, g: 0.34117648, b: 0.10980392, a: 0.5019608}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.1
   m_SpriteState:
@@ -138,8 +138,8 @@ MonoBehaviour:
   m_IgnoreLayout: 0
   m_MinWidth: -1
   m_MinHeight: 100
-  m_PreferredWidth: 1220
-  m_PreferredHeight: 100
+  m_PreferredWidth: 200
+  m_PreferredHeight: 180
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
@@ -156,7 +156,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   dropPlacer: {fileID: 0}
-  dragGhostImage: {fileID: 0}
   itemPrefab: {fileID: 0}
   itemThumb: {fileID: 0}
 --- !u!1 &8406355882860593643

@@ -29,9 +29,13 @@ public class CategoryItemsLoader : MonoBehaviour
     public RectTransform categoriesContentForSizing;
 
     [Header("Item sizing (se auto-sincroniza)")]
-    [SerializeField] float itemPreferredWidth  = 180f;
+    [SerializeField] float itemPreferredWidth = 180f;
     [SerializeField] float itemPreferredHeight = 72f;
-    [SerializeField] float itemSpacing         = 8f;
+    [SerializeField] float itemSpacing = 8f;
+
+    [Header("Detected categories UI")]
+    [SerializeField] private DetectedCategoriesUI detectedCategoriesUI;
+
 
     static readonly Dictionary<string, string> CatMap = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -238,15 +242,13 @@ public class CategoryItemsLoader : MonoBehaviour
     public void ShowCategories()
     {
         ClearContent();
-        if (backButton != null) backButton.gameObject.SetActive(false);
 
-        var cats = Instantiate(categoriesUIPrefab, content);
-        cats.name = "DetectedCategoriesUI";
+        if (backButton != null)
+            backButton.gameObject.SetActive(false);
 
-        var det = cats.GetComponent<DetectedCategoriesUI>();
-        if (det != null && DetectedCategoriesUI.HasConfirmedAtLeastOnce)
+        if (detectedCategoriesUI != null)
         {
-            det.ForceFullCatalogMode();
+            detectedCategoriesUI.RefreshBar();
         }
 
         OnCategoriesShown?.Invoke();
