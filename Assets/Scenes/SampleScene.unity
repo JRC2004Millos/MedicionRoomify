@@ -649,7 +649,7 @@ MonoBehaviour:
   <trackablesChanged>k__BackingField:
     m_PersistentCalls:
       m_Calls: []
-  m_PlanePrefab: {fileID: 8321688147962801312, guid: b12620b07a5833449bb3a8d08bec324e,
+  m_PlanePrefab: {fileID: 1585201990951412, guid: a6b7ca1d53c75490595d1f0d5f43be38,
     type: 3}
   m_DetectionMode: -1
 --- !u!114 &608830359
@@ -1015,7 +1015,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -0.00012207031, y: -909.99994}
+  m_AnchoredPosition: {x: -0.00012207031, y: -910}
   m_SizeDelta: {x: -980, y: -1820}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!1 &673060228
@@ -1862,6 +1862,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _probabilityThreshold: 0.5
   _objectDetectionManager: {fileID: 1796759441}
+  _autoSaveInterval: 5
+  _maxDetections: 1000
 --- !u!4 &1216023165
 Transform:
   m_ObjectHideFlags: 0
@@ -2869,7 +2871,7 @@ Canvas:
   m_GameObject: {fileID: 1976923995}
   m_Enabled: 1
   serializedVersion: 3
-  m_RenderMode: 1
+  m_RenderMode: 0
   m_Camera: {fileID: 1796759439}
   m_PlaneDistance: 2
   m_PixelPerfect: 0
@@ -3219,8 +3221,8 @@ SceneRoots:
   - {fileID: 1075000276}
   - {fileID: 702413259}
   - {fileID: 188148736}
-  - {fileID: 608830361}
   - {fileID: 1976923999}
+  - {fileID: 608830361}
   - {fileID: 2132021170}
   - {fileID: 621465532}
   - {fileID: 1774931773}

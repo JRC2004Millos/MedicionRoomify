@@ -95,6 +95,22 @@ public class RoomLoading : MonoBehaviour
 
         Debug.Log($"[RoomLoading] Layout cargado. roomId={data.roomId}, spaceName={data.spaceName}");
 
+        var saver = FindObjectOfType<RoomSaving>();
+        if (saver != null)
+        {
+            if (!string.IsNullOrEmpty(data.roomId))
+                saver.roomId = data.roomId;
+
+            saver.spaceName = data.spaceName;
+            saver.saveFileName = Path.GetFileName(path);
+
+            Debug.Log($"[RoomLoading] Sincronizado RoomSaving: roomId={saver.roomId}, spaceName={saver.spaceName}, file={saver.saveFileName}");
+        }
+        else
+        {
+            Debug.LogWarning("[RoomLoading] No se encontró RoomSaving en la escena para sincronizar nombre/archivo.");
+        }
+
         BuildGeometryFromFinalModel(data);
         BuildSurfaceMap();
         ApplyTextures(data);
@@ -469,7 +485,7 @@ public class RoomLoading : MonoBehaviour
 
             var instance = Instantiate(prefab, item.position, item.rotation);
             instance.transform.localScale = item.scale;
-            instance.tag = "Furniture";
+            FinalizeLoadedFurniture(instance);
         }
     }
 
@@ -837,6 +853,69 @@ public class RoomLoading : MonoBehaviour
         }
 
         return id.ToLowerInvariant();
+    }
+
+    private void FinalizeLoadedFurniture(GameObject go)
+    {
+        if (go == null) return;
+
+        int furnLayer = LayerMask.NameToLayer("Furniture");
+        if (furnLayer >= 0)
+        {
+            foreach (Transform t in go.GetComponentsInChildren<Transform>(true))
+                t.gameObject.layer = furnLayer;
+        }
+
+        go.tag = "Furniture";
+
+        var fi = go.GetComponent<FurnitureInteractable>();
+        if (!fi)
+            fi = go.AddComponent<FurnitureInteractable>();
+
+        if (string.IsNullOrEmpty(fi.furnitureId))
+            fi.furnitureId = go.name;
+
+        var colliders = go.GetComponentsInChildren<Collider>();
+        if (colliders == null || colliders.Length == 0)
+        {
+            var rends = go.GetComponentsInChildren<Renderer>(true);
+            if (rends != null && rends.Length > 0)
+            {
+                Bounds b = rends[0].bounds;
+                for (int i = 1; i < rends.Length; i++)
+                    b.Encapsulate(rends[i].bounds);
+
+                var bc = go.AddComponent<BoxCollider>();
+                bc.center = go.transform.InverseTransformPoint(b.center);
+
+                Vector3 sizeWorld = b.size;
+                Vector3 lossy = go.transform.lossyScale;
+                bc.size = new Vector3(
+                    sizeWorld.x / Mathf.Max(lossy.x, 1e-4f),
+                    sizeWorld.y / Mathf.Max(lossy.y, 1e-4f),
+                    sizeWorld.z / Mathf.Max(lossy.z, 1e-4f)
+                );
+            }
+            else
+            {
+                go.AddComponent<BoxCollider>();
+            }
+        }
+
+        if (roomSpace != null)
+        {
+            float floorY = roomSpace.floorY;
+            var rends = go.GetComponentsInChildren<Renderer>();
+            if (rends.Length > 0)
+            {
+                Bounds b = rends[0].bounds;
+                for (int i = 1; i < rends.Length; i++)
+                    b.Encapsulate(rends[i].bounds);
+
+                float delta = floorY - b.min.y;
+                go.transform.position += new Vector3(0f, delta, 0f);
+            }
+        }
     }
 }
 
