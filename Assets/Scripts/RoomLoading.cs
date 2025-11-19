@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using UnityEngine;
 
+[DefaultExecutionOrder(-10)]
 public class RoomLoading : MonoBehaviour
 {
     [Header("Ruta de layout (opcional)")]
@@ -13,6 +14,7 @@ public class RoomLoading : MonoBehaviour
     public List<SurfaceBinding> sceneSurfaces = new List<SurfaceBinding>();
 
     private Dictionary<string, SurfaceBinding> _surfaceMap;
+    
     [Header("Opciones de geometría (reconstrucción)")]
     public float wallThickness = 0.1f;
     public Material defaultFloorMaterial;
@@ -20,6 +22,8 @@ public class RoomLoading : MonoBehaviour
     public RoomSpace roomSpace;
 
     private float floorBaseY = 0.05f;
+    private List<Vector2> floorPolygon2D = new List<Vector2>();
+    private float roomHeightMeters = 2.5f;
 
     private readonly Dictionary<string, Material> _matCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly string[] TEX_EXT = { ".png", ".jpg", ".jpeg", ".tga", ".webp" };
@@ -101,7 +105,7 @@ public class RoomLoading : MonoBehaviour
             if (!string.IsNullOrEmpty(data.roomId))
                 saver.roomId = data.roomId;
 
-            saver.spaceName = data.spaceName;
+            saver.spaceName  = data.spaceName;
             saver.saveFileName = Path.GetFileName(path);
 
             Debug.Log($"[RoomLoading] Sincronizado RoomSaving: roomId={saver.roomId}, spaceName={saver.spaceName}, file={saver.saveFileName}");
@@ -115,6 +119,8 @@ public class RoomLoading : MonoBehaviour
         BuildSurfaceMap();
         ApplyTextures(data);
         RebuildFurniture(data);
+
+        SnapPlayerInside();
     }
 
     private string ResolveLayoutPath()
@@ -519,6 +525,8 @@ public class RoomLoading : MonoBehaviour
             ? geo.room_dimensions.height
             : 2.5f;
 
+        roomHeightMeters = roomHeight;
+
         var cornersById = new Dictionary<string, Corner>();
         foreach (var c in geo.corners)
         {
@@ -533,6 +541,8 @@ public class RoomLoading : MonoBehaviour
             Debug.LogError("[RoomLoading] No se pudo derivar el polígono del piso desde geometry.");
             return;
         }
+
+        floorPolygon2D = floorVerts2D.ToList();
 
         var floorRenderer = BuildFloorMesh(floorVerts2D);
         sceneSurfaces.Add(new SurfaceBinding
@@ -590,30 +600,24 @@ public class RoomLoading : MonoBehaviour
 
         string start = walls[0].from;
         string cur = start;
-        int guard = 0;
 
+        int guard = 0;
         while (guard++ < 1024)
         {
-            if (!cornersById.ContainsKey(cur)) break;
+            if (!cornersById.ContainsKey(cur))
+                break;
 
             var c = cornersById[cur];
             verts.Add(new Vector2(c.position.x, c.position.y));
 
-            Wall next = null;
-            bool found = false;
-            foreach (var w in walls)
-            {
-                if (w.from == cur)
-                {
-                    next = w;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found || next == null) break;
+            Wall next = walls.FirstOrDefault(w => w.from == cur);
+            if (next == null)
+                break;
 
             cur = next.to;
-            if (cur == start) break;
+
+            if (cur == start)
+                break;
         }
 
         return verts;
@@ -765,51 +769,40 @@ public class RoomLoading : MonoBehaviour
     {
         if (verts2D == null || verts2D.Count < 3) return null;
 
-        var verts2DCopy = new List<Vector2>(verts2D);
-        if (SignedArea2D(verts2DCopy) < 0f)
-            verts2DCopy.Reverse();
+        var verts = new List<Vector2>(verts2D);
 
-        var verts3D = new Vector3[verts2DCopy.Count];
-        float ceilingY = floorBaseY + roomHeight;
+        if (SignedArea2D(verts) > 0f)
+            verts.Reverse();
 
-        for (int i = 0; i < verts2DCopy.Count; i++)
-            verts3D[i] = new Vector3(verts2DCopy[i].x, ceilingY, verts2DCopy[i].y);
+        float y = floorBaseY + roomHeight;
+
+        var verts3D = verts.Select(v => new Vector3(v.x, y, v.y)).ToArray();
 
         var tris = new List<int>();
         for (int i = 1; i < verts3D.Length - 1; i++)
         {
-            tris.Add(0); tris.Add(i + 1); tris.Add(i);
+            tris.Add(0);
+            tris.Add(i + 1);
+            tris.Add(i);
         }
 
-        float minX = verts2DCopy[0].x, maxX = verts2DCopy[0].x;
-        float minZ = verts2DCopy[0].y, maxZ = verts2DCopy[0].y;
-        foreach (var v in verts2DCopy)
-        {
-            if (v.x < minX) minX = v.x;
-            if (v.x > maxX) maxX = v.x;
-            if (v.y < minZ) minZ = v.y;
-            if (v.y > maxZ) maxZ = v.y;
-        }
+        float minX = verts.Min(v => v.x);
+        float maxX = verts.Max(v => v.x);
+        float minZ = verts.Min(v => v.y);
+        float maxZ = verts.Max(v => v.y);
 
         float spanX = Mathf.Max(0.001f, maxX - minX);
         float spanZ = Mathf.Max(0.001f, maxZ - minZ);
 
-        var uvs = new Vector2[verts3D.Length];
-        for (int i = 0; i < verts3D.Length; i++)
-        {
-            float u = (verts3D[i].x - minX) / spanX;
-            float v = (verts3D[i].z - minZ) / spanZ;
-            uvs[i] = new Vector2(u, v);
-        }
+        var uvs = verts3D.Select(
+            p => new Vector2((p.x - minX) / spanX, (p.z - minZ) / spanZ)
+        ).ToArray();
 
-        var mesh = new Mesh { name = "CeilingMesh" };
-        mesh.indexFormat = verts3D.Length > 65000
-            ? UnityEngine.Rendering.IndexFormat.UInt32
-            : UnityEngine.Rendering.IndexFormat.UInt16;
-
-        mesh.vertices  = verts3D;
+        var mesh = new Mesh();
+        mesh.name = "CeilingMesh";
+        mesh.vertices = verts3D;
         mesh.triangles = tris.ToArray();
-        mesh.uv        = uvs;
+        mesh.uv = uvs;
         mesh.RecalculateNormals();
         mesh.RecalculateTangents();
         mesh.RecalculateBounds();
@@ -823,7 +816,6 @@ public class RoomLoading : MonoBehaviour
 
         mf.sharedMesh = mesh;
         mc.sharedMesh = mesh;
-        mc.convex = false;
 
         if (defaultWallMaterial == null)
         {
@@ -831,6 +823,7 @@ public class RoomLoading : MonoBehaviour
             defaultWallMaterial.color = Color.white;
         }
 
+        MatTuning.MakeURPLitClean(defaultWallMaterial);
         mr.material = defaultWallMaterial;
 
         return mr;
@@ -916,6 +909,71 @@ public class RoomLoading : MonoBehaviour
                 go.transform.position += new Vector3(0f, delta, 0f);
             }
         }
+    }
+
+    public bool TryGetSpawnInside(out Vector3 worldPoint)
+    {
+        worldPoint = Vector3.zero;
+        if (floorPolygon2D == null || floorPolygon2D.Count < 3) return false;
+
+        double A = 0.0;
+        double Cx = 0.0;
+        double Cz = 0.0;
+        int n = floorPolygon2D.Count;
+
+        for (int i = 0, j = n - 1; i < n; j = i++)
+        {
+            double xi = floorPolygon2D[i].x;
+            double zi = floorPolygon2D[i].y;
+            double xj = floorPolygon2D[j].x;
+            double zj = floorPolygon2D[j].y;
+            double cross = xj * zi - xi * zj;
+            A += cross;
+            Cx += (xj + xi) * cross;
+            Cz += (zj + zi) * cross;
+        }
+
+        if (Mathf.Approximately((float)A, 0f)) return false;
+
+        A *= 0.5;
+        double factor = 1.0 / (6.0 * A);
+        float cx = (float)(Cx * factor);
+        float cz = (float)(Cz * factor);
+
+        worldPoint = new Vector3(cx, floorBaseY, cz);
+        return true;
+    }
+
+    private void SnapPlayerInside()
+    {
+        var player = GameObject.FindWithTag("Player");
+        if (player == null) return;
+
+        if (!TryGetSpawnInside(out Vector3 p)) return;
+
+        float floorY = roomSpace != null ? roomSpace.floorY : floorBaseY;
+
+        var cc = player.GetComponent<CharacterController>();
+        if (cc)
+        {
+            cc.enabled = false;
+
+            float centerY = floorY + (cc.height * 0.5f) + cc.skinWidth + 0.05f;
+
+            player.transform.position = new Vector3(p.x, centerY, p.z);
+            player.transform.rotation = Quaternion.identity;
+
+            cc.enabled = true;
+        }
+        else
+        {
+            float eyeHeight = 1.6f;
+            float y = floorY + eyeHeight;
+            player.transform.position = new Vector3(p.x, y, p.z);
+            player.transform.rotation = Quaternion.identity;
+        }
+
+        Debug.Log("[RoomLoading] Player spawneado dentro del cuarto (ajustado).");
     }
 }
 

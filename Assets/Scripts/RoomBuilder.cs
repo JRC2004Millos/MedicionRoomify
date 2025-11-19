@@ -76,8 +76,11 @@ public class RoomBuilder : MonoBehaviour
         }
         floorPolygon2D = floorVerts2D.ToList();
 
+        float roomHeight = data.room_dimensions != null ? data.room_dimensions.height : 2.5f;
+
         BuildFloor(floorVerts2D);
-        BuildWalls(data.walls, cornersById, data.room_dimensions != null ? data.room_dimensions.height : 2.5f);
+        BuildWalls(data.walls, cornersById, roomHeight);
+        BuildCeiling(floorVerts2D, roomHeight);
 
         FrameCameraToBounds(floorVerts2D);
 
@@ -286,6 +289,74 @@ public class RoomBuilder : MonoBehaviour
                 mr.material = wallMaterial;
                 MatTuning.MakeURPLitClean(mr.material);
             }
+        }
+    }
+
+    void BuildCeiling(List<Vector2> verts2D, float height)
+    {
+        if (verts2D == null || verts2D.Count < 3) return;
+
+        var verts = new List<Vector2>(verts2D);
+
+        if (SignedArea2D(verts) > 0f)
+            verts.Reverse();
+
+        float y = floorBaseY + height;
+
+        var verts3D = verts.Select(v => new Vector3(v.x, y, v.y)).ToArray();
+
+        var tris = new List<int>();
+        for (int i = 1; i < verts3D.Length - 1; i++)
+        {
+            tris.Add(0); 
+            tris.Add(i + 1); 
+            tris.Add(i);
+        }
+
+        float minX = verts.Min(p => p.x);
+        float maxX = verts.Max(p => p.x);
+        float minZ = verts.Min(p => p.y);
+        float maxZ = verts.Max(p => p.y);
+        float spanX = Mathf.Max(0.001f, maxX - minX);
+        float spanZ = Mathf.Max(0.001f, maxZ - minZ);
+
+        var uvs = new Vector2[verts3D.Length];
+        for (int i = 0; i < verts3D.Length; i++)
+        {
+            float u = (verts3D[i].x - minX) / spanX;
+            float v = (verts3D[i].z - minZ) / spanZ;
+            uvs[i] = new Vector2(u, v);
+        }
+
+        var mesh = new Mesh { name = "CeilingMesh" };
+        mesh.indexFormat = verts3D.Length > 65000
+            ? UnityEngine.Rendering.IndexFormat.UInt32
+            : UnityEngine.Rendering.IndexFormat.UInt16;
+        mesh.vertices  = verts3D;
+        mesh.triangles = tris.ToArray();
+        mesh.uv        = uvs;
+        mesh.RecalculateNormals();
+        mesh.RecalculateTangents();
+        mesh.RecalculateBounds();
+
+        var go = new GameObject("Ceiling", typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider));
+        go.transform.SetParent(this.transform, true);
+
+        go.GetComponent<MeshFilter>().mesh = mesh;
+        var mr = go.GetComponent<MeshRenderer>();
+        var mc = go.GetComponent<MeshCollider>();
+        mc.sharedMesh = mesh;
+        mc.convex = false;
+
+        var textures = FindFirstObjectByType<RoomTextures>();
+        if (textures != null)
+        {
+            textures.ApplyOrQueueRenderer(mr, RoomTextures.SurfaceKind.Ceiling, Vector3.up, wallMaterial);
+        }
+        else
+        {
+            mr.material = wallMaterial;
+            MatTuning.MakeURPLitClean(mr.material);
         }
     }
 

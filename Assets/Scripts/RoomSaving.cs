@@ -24,19 +24,61 @@ public class RoomSaving : MonoBehaviour
 
     public void SaveRoom()
     {
-        FinalRoomModel data = new FinalRoomModel
-        {
-            roomId    = roomId,
-            spaceName = string.IsNullOrEmpty(spaceName) ? roomId : spaceName,
-            geometry  = null,
-            textures  = new List<CombinedTextureData>(),
-            items     = new List<FurnitureItemData>()
-        };
-
+        // --- 1) Rutas base ---
         string geoPath = Path.Combine(Application.persistentDataPath, ROOM_DATA_FILE_NAME);
         string texPath = Path.Combine(Application.persistentDataPath, TEXTURES_MODEL_FILE_NAME);
 
-        if (File.Exists(geoPath))
+        string baseDir = Path.Combine(Application.persistentDataPath, "Modelos");
+        if (!Directory.Exists(baseDir))
+            Directory.CreateDirectory(baseDir);
+
+        string fileName = string.IsNullOrEmpty(saveFileName)
+            ? $"{roomId}_layout.json"
+            : saveFileName;
+
+        string finalPath = Path.Combine(baseDir, fileName);
+
+        bool hasGeo = File.Exists(geoPath);
+        bool hasTex = File.Exists(texPath);
+
+        FinalRoomModel data = null;
+
+        if (!hasGeo && !hasTex && File.Exists(finalPath))
+        {
+            try
+            {
+                string existingJson = File.ReadAllText(finalPath);
+                data = JsonUtility.FromJson<FinalRoomModel>(existingJson);
+                Debug.Log("[RoomSaving] Inicializando modelo desde layout existente: " + finalPath);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[RoomSaving] No se pudo leer el layout existente. Se creará uno nuevo. Detalle: " + ex.Message);
+                data = null;
+            }
+        }
+
+        if (data == null)
+        {
+            data = new FinalRoomModel
+            {
+                roomId    = roomId,
+                spaceName = string.IsNullOrEmpty(spaceName) ? roomId : spaceName,
+                geometry  = null,
+                textures  = new List<CombinedTextureData>(),
+                items     = new List<FurnitureItemData>()
+            };
+        }
+
+        if (!string.IsNullOrEmpty(roomId))
+            data.roomId = roomId;
+
+        if (!string.IsNullOrEmpty(spaceName))
+            data.spaceName = spaceName;
+        else if (string.IsNullOrEmpty(data.spaceName))
+            data.spaceName = string.IsNullOrEmpty(roomId) ? "espacio_sin_nombre" : roomId;
+
+        if (hasGeo)
         {
             try
             {
@@ -51,10 +93,11 @@ public class RoomSaving : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[RoomSaving] No se encontró room_data.json en: " + geoPath);
+            if (data.geometry == null)
+                Debug.LogWarning("[RoomSaving] No hay room_data.json y el layout previo no tenía geometry. geometry quedará nulo.");
         }
-
-        if (File.Exists(texPath))
+        
+        if (hasTex)
         {
             try
             {
@@ -63,15 +106,33 @@ public class RoomSaving : MonoBehaviour
 
                 if (texRoot != null && texRoot.items != null)
                 {
+                    if (data.textures == null)
+                        data.textures = new List<CombinedTextureData>();
+
+                    var map = new Dictionary<string, CombinedTextureData>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var existing in data.textures)
+                    {
+                        if (existing == null || string.IsNullOrEmpty(existing.wall)) continue;
+                        if (!map.ContainsKey(existing.wall))
+                            map[existing.wall] = existing;
+                    }
+
                     foreach (var it in texRoot.items)
                     {
-                        data.textures.Add(new CombinedTextureData
+                        if (it == null || string.IsNullOrEmpty(it.wall)) continue;
+
+                        map[it.wall] = new CombinedTextureData
                         {
                             wall = it.wall,
                             pack = it.pack,
                             path = it.path
-                        });
+                        };
                     }
+
+                    data.textures = new List<CombinedTextureData>(map.Values);
+
+                    Debug.Log($"[RoomSaving] Texturas tras merge: {data.textures.Count}");
                 }
             }
             catch (Exception ex)
@@ -81,7 +142,8 @@ public class RoomSaving : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[RoomSaving] No se encontró textures_model.json en: " + texPath);
+            if (data.textures == null)
+                data.textures = new List<CombinedTextureData>();
         }
 
         GameObject[] furnitureObjects = Array.Empty<GameObject>();
@@ -99,9 +161,12 @@ public class RoomSaving : MonoBehaviour
         }
 
         Debug.Log("[RoomSaving] Muebles encontrados con tag '" + furnitureTag + "': " + furnitureObjects.Length);
+
+        data.items = new List<FurnitureItemData>();
+
         foreach (var go in furnitureObjects)
         {
-            FurnitureItemData item = new FurnitureItemData();
+            var item = new FurnitureItemData();
 
             string prefabName = go.name;
             int cloneIndex = prefabName.IndexOf("(Clone)", StringComparison.Ordinal);
@@ -117,16 +182,6 @@ public class RoomSaving : MonoBehaviour
         }
 
         string json = JsonUtility.ToJson(data, true);
-
-        string fileName = string.IsNullOrEmpty(saveFileName)
-            ? $"{roomId}_layout.json"
-            : saveFileName;
-
-        string baseDir = Path.Combine(Application.persistentDataPath, "Modelos");
-        if (!Directory.Exists(baseDir))
-            Directory.CreateDirectory(baseDir);
-
-        string finalPath = Path.Combine(baseDir, fileName);
 
         try
         {
