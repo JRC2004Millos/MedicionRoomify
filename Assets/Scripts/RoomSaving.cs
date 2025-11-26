@@ -11,6 +11,9 @@ public class RoomSaving : MonoBehaviour
     [Header("Nombre visible del espacio")]
     public string spaceName = "";
 
+    [Header("Ruta del layout actualmente cargado (opcional)")]
+    public string currentLayoutPath = "";
+
     [Header("Nombre del archivo (opcional)")]
     public string saveFileName = "";
 
@@ -43,18 +46,32 @@ public class RoomSaving : MonoBehaviour
 
         FinalRoomModel data = null;
 
-        if (!hasGeo && !hasTex && File.Exists(finalPath))
+        if (!hasGeo && !hasTex)
         {
-            try
+            string sourcePath = null;
+
+            if (!string.IsNullOrEmpty(currentLayoutPath) && File.Exists(currentLayoutPath))
             {
-                string existingJson = File.ReadAllText(finalPath);
-                data = JsonUtility.FromJson<FinalRoomModel>(existingJson);
-                Debug.Log("[RoomSaving] Inicializando modelo desde layout existente: " + finalPath);
+                sourcePath = currentLayoutPath;
             }
-            catch (Exception ex)
+            else if (File.Exists(finalPath))
             {
-                Debug.LogWarning("[RoomSaving] No se pudo leer el layout existente. Se creará uno nuevo. Detalle: " + ex.Message);
-                data = null;
+                sourcePath = finalPath;
+            }
+
+            if (!string.IsNullOrEmpty(sourcePath))
+            {
+                try
+                {
+                    string existingJson = File.ReadAllText(sourcePath);
+                    data = JsonUtility.FromJson<FinalRoomModel>(existingJson);
+                    Debug.Log("[RoomSaving] Inicializando modelo desde layout existente: " + sourcePath);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning("[RoomSaving] No se pudo leer el layout existente. Se creará uno nuevo. Detalle: " + ex.Message);
+                    data = null;
+                }
             }
         }
 

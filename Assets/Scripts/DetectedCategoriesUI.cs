@@ -66,7 +66,11 @@ public class DetectedCategoriesUI : MonoBehaviour
     private List<string> extraOfferedCategories = new List<string>
     {
         "escritorio",
-        "sofa"
+        "sofa",
+        "chair", 
+        "lamp",
+        "potted_plant",
+        "bed"
     };
 
     // Guarda las categorías detectadas (y filtradas) para la fase FullCatalog

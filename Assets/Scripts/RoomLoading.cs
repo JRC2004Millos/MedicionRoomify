@@ -14,7 +14,7 @@ public class RoomLoading : MonoBehaviour
     public List<SurfaceBinding> sceneSurfaces = new List<SurfaceBinding>();
 
     private Dictionary<string, SurfaceBinding> _surfaceMap;
-    
+
     [Header("Opciones de geometría (reconstrucción)")]
     public float wallThickness = 0.1f;
     public Material defaultFloorMaterial;
@@ -29,7 +29,7 @@ public class RoomLoading : MonoBehaviour
     private static readonly string[] TEX_EXT = { ".png", ".jpg", ".jpeg", ".tga", ".webp" };
     private int _loadedSinceLastFlush = 0;
     const int MAX_TEX_SIZE = 4096;
-    const int FLUSH_EVERY  = 8;
+    const int FLUSH_EVERY = 8;
 
     [Header("Modelos desde Resources/Catalog")]
     [SerializeField] private string catalogBasePath = "Catalog";
@@ -105,10 +105,12 @@ public class RoomLoading : MonoBehaviour
             if (!string.IsNullOrEmpty(data.roomId))
                 saver.roomId = data.roomId;
 
-            saver.spaceName  = data.spaceName;
+            saver.spaceName = data.spaceName;
             saver.saveFileName = Path.GetFileName(path);
 
-            Debug.Log($"[RoomLoading] Sincronizado RoomSaving: roomId={saver.roomId}, spaceName={saver.spaceName}, file={saver.saveFileName}");
+            saver.currentLayoutPath = path;
+
+            Debug.Log($"[RoomLoading] Sincronizado RoomSaving: roomId={saver.roomId}, spaceName={saver.spaceName}, file={saver.saveFileName}, layoutPath={saver.currentLayoutPath}");
         }
         else
         {
@@ -290,7 +292,7 @@ public class RoomLoading : MonoBehaviour
 
             var albedo = FindMap(dir, new[] { "color", "albedo", "basecolor", "_col" });
             var normal = FindMap(dir, new[] { "normalgl", "normaldx" });
-            var rough  = FindMap(dir, new[] { "roughness", "rough" });
+            var rough = FindMap(dir, new[] { "roughness", "rough" });
 
             if (albedo == null)
             {
@@ -666,9 +668,9 @@ public class RoomLoading : MonoBehaviour
             ? UnityEngine.Rendering.IndexFormat.UInt32
             : UnityEngine.Rendering.IndexFormat.UInt16;
 
-        mesh.vertices  = verts3D;
+        mesh.vertices = verts3D;
         mesh.triangles = tris.ToArray();
-        mesh.uv        = uvs;
+        mesh.uv = uvs;
         mesh.RecalculateNormals();
         mesh.RecalculateTangents();
         mesh.RecalculateBounds();
@@ -710,7 +712,7 @@ public class RoomLoading : MonoBehaviour
 
         Vector3 mid = (a3 + b3) * 0.5f;
         Vector3 dir = (b3 - a3).normalized;
-        float len   = Vector3.Distance(a3, b3);
+        float len = Vector3.Distance(a3, b3);
 
         var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
         wall.name = $"Wall_{a.id}_{b.id}";
