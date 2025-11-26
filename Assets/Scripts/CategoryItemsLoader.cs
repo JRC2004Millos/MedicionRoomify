@@ -38,26 +38,38 @@ public class CategoryItemsLoader : MonoBehaviour
 
 
     static readonly Dictionary<string, string> CatMap = new(StringComparer.OrdinalIgnoreCase)
-    {
-        // sillas
-        { "silla", "chair" }, { "chairs", "chair" }, { "chair", "chair" },
-        // sofás
-        { "sofa", "sofas" }, { "sofá", "sofas" }, { "sofas", "sofas" },
-        // mesas
-        { "mesa", "mesas" }, { "table", "mesas" }, { "tables", "mesas" },
-        // monitores/pantallas
-        { "monitor", "screens" }, { "screen", "screens" }, { "television", "screens" },
-        // mouse
-        { "computer_mouse", "mouse" }, { "mouse", "mouse" },
-        // teclados
-        { "computer_keyboard", "keyboards" }, { "keyboard", "keyboards" }, { "teclado", "keyboards" },
-        // computadoras
-        { "pc", "pc" }, { "computer", "pc" }, { "computadora", "pc" }, { "laptop", "pc" },
-        // lámparas
-        { "lampara", "lamparas" }, { "lámpara", "lamparas" }, { "lamparas", "lamparas" }, { "lamp", "lamparas" },
-        // genérico niantic
-        { "furniture", "furniture" },
-    };
+{
+    // sillas
+    { "silla", "chair" }, { "chairs", "chair" }, { "chair", "chair" },
+
+    // sofás
+    { "sofa", "sofa" }, { "sofá", "sofa" }, { "sofas", "sofa" }, { "couch", "sofa" },
+
+    // mesas / escritorios
+    { "mesa", "furniture" }, { "table", "furniture" }, { "tables", "furniture" },
+
+    // monitores/pantallas
+    { "monitor", "screen" }, { "screen", "screen" }, { "television", "screen" },
+
+    // mouse
+    { "computer_mouse", "computer_mouse" }, { "mouse", "computer_mouse" },
+
+    // teclados
+    { "computer_keyboard", "computer_keyboard" }, { "keyboard", "computer_keyboard" }, { "teclado", "computer_keyboard" },
+
+    // computadoras
+    { "pc", "pc" }, { "computer", "pc" }, { "computadora", "pc" }, { "laptop", "pc" },
+
+    // lámparas
+    { "lampara", "lampara" }, { "lámpara", "lampara" }, { "lamp", "lampara" },
+
+    // plantas
+    { "potted_plant", "potted_plant" }, { "plant", "potted_plant" },
+
+    // genérico niantic
+    { "furniture", "furniture" },
+};
+
 
     void Awake()
     {
@@ -78,9 +90,9 @@ public class CategoryItemsLoader : MonoBehaviour
         var gCat = categoriesContentForSizing.GetComponent<GridLayoutGroup>();
         if (gCat != null)
         {
-            itemPreferredWidth  = gCat.cellSize.x;
+            itemPreferredWidth = gCat.cellSize.x;
             itemPreferredHeight = gCat.cellSize.y;
-            itemSpacing         = Mathf.Max(gCat.spacing.x, gCat.spacing.y);
+            itemSpacing = Mathf.Max(gCat.spacing.x, gCat.spacing.y);
             ApplyContentLayoutParamsFromCategories();
             return;
         }
@@ -99,12 +111,12 @@ public class CategoryItemsLoader : MonoBehaviour
                 var le = refChild.GetComponent<LayoutElement>();
                 if (le != null)
                 {
-                    if (le.preferredWidth  > 0f) itemPreferredWidth  = le.preferredWidth;
+                    if (le.preferredWidth > 0f) itemPreferredWidth = le.preferredWidth;
                     if (le.preferredHeight > 0f) itemPreferredHeight = le.preferredHeight;
                 }
                 else
                 {
-                    if (refChild.rect.width  > 0f) itemPreferredWidth  = refChild.rect.width;
+                    if (refChild.rect.width > 0f) itemPreferredWidth = refChild.rect.width;
                     if (refChild.rect.height > 0f) itemPreferredHeight = refChild.rect.height;
                 }
             }
@@ -121,12 +133,12 @@ public class CategoryItemsLoader : MonoBehaviour
                 var le = refChild.GetComponent<LayoutElement>();
                 if (le != null)
                 {
-                    if (le.preferredWidth  > 0f) itemPreferredWidth  = le.preferredWidth;
+                    if (le.preferredWidth > 0f) itemPreferredWidth = le.preferredWidth;
                     if (le.preferredHeight > 0f) itemPreferredHeight = le.preferredHeight;
                 }
                 else
                 {
-                    if (refChild.rect.width  > 0f) itemPreferredWidth  = refChild.rect.width;
+                    if (refChild.rect.width > 0f) itemPreferredWidth = refChild.rect.width;
                     if (refChild.rect.height > 0f) itemPreferredHeight = refChild.rect.height;
                 }
             }
@@ -196,7 +208,7 @@ public class CategoryItemsLoader : MonoBehaviour
             return;
         }
 
-        string cat  = NormalizeCategory(rawCategory);
+        string cat = NormalizeCategory(rawCategory);
         string path = $"{basePath}/{cat}".Replace("\\", "/").Trim('/');
 
         GameObject[] prefabs = Resources.LoadAll<GameObject>(path);
@@ -311,19 +323,19 @@ public class CategoryItemsLoader : MonoBehaviour
         var h = content.GetComponent<HorizontalLayoutGroup>();
         if (h != null)
         {
-            h.childControlWidth     = true;
-            h.childControlHeight    = true;
+            h.childControlWidth = true;
+            h.childControlHeight = true;
             h.childForceExpandWidth = false;
-            h.childForceExpandHeight= false;
-            h.spacing               = itemSpacing;
-            if (h.padding == null) h.padding = new RectOffset(4,4,4,4);
+            h.childForceExpandHeight = false;
+            h.spacing = itemSpacing;
+            if (h.padding == null) h.padding = new RectOffset(4, 4, 4, 4);
         }
 
         var g = content.GetComponent<GridLayoutGroup>();
         if (g != null)
         {
             g.cellSize = new Vector2(itemPreferredWidth, itemPreferredHeight);
-            g.spacing  = new Vector2(itemSpacing, itemSpacing);
+            g.spacing = new Vector2(itemSpacing, itemSpacing);
         }
     }
 
@@ -336,17 +348,17 @@ public class CategoryItemsLoader : MonoBehaviour
         {
             rt.anchorMin = new Vector2(rt.anchorMin.x, 0.5f);
             rt.anchorMax = new Vector2(rt.anchorMax.x, 0.5f);
-            rt.pivot    = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
         }
 
         var le = go.GetComponent<LayoutElement>();
         if (le == null) le = go.AddComponent<LayoutElement>();
 
-        le.minWidth        = itemPreferredWidth;
-        le.minHeight       = itemPreferredHeight;
-        le.preferredWidth  = itemPreferredWidth;
+        le.minWidth = itemPreferredWidth;
+        le.minHeight = itemPreferredHeight;
+        le.preferredWidth = itemPreferredWidth;
         le.preferredHeight = itemPreferredHeight;
-        le.flexibleWidth   = 0;
-        le.flexibleHeight  = 0;
+        le.flexibleWidth = 0;
+        le.flexibleHeight = 0;
     }
 }

@@ -38,20 +38,39 @@ public class DetectedCategoriesUI : MonoBehaviour
 
     [SerializeField] private RoomSaving roomSaving;
 
+    // Categorías detectadas por Niantic 
+    private readonly HashSet<string> allowedDetectedCategories =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "chair",
+            "table",
+            "bed",
+            "lamp",
+            "furniture",
+            "potted_plant"
+        };
+
     [Header("Full catalog mode")]
-    [SerializeField] private List<string> allCatalogCategories = new List<string>
+    [SerializeField]
+    private List<string> allCatalogCategories = new List<string>
     {
         "chair",
-        "sofa",
         "table",
-        "screen",
-        "computer_mouse",
-        "computer_keyboard",
         "lamp",
-        "plant",
-        "pc",
-        "furniture"
+        "furniture",
+        "potted_plant"
     };
+
+    [Header("Categorías extra ofrecidas aunque Niantic no las detecte")]
+    [SerializeField]
+    private List<string> extraOfferedCategories = new List<string>
+    {
+        "escritorio",
+        "sofa"
+    };
+
+    // Guarda las categorías detectadas (y filtradas) para la fase FullCatalog
+    private HashSet<string> _lastDetectedFiltered = new HashSet<string>();
 
     [SerializeField] private Button ConfirmButton;
     public static bool HasConfirmedAtLeastOnce = false;
@@ -92,6 +111,10 @@ public class DetectedCategoriesUI : MonoBehaviour
                 barContainer = GetComponent<RectTransform>();
             }
         }
+
+        // Modo inicial: Solo categorías detectadas filtradas
+        HasConfirmedAtLeastOnce = false;
+        _currentMode = BarMode.DetectedOnly;
     }
 
     private void EnsureConfirmButtonAtStart()
@@ -165,7 +188,8 @@ public class DetectedCategoriesUI : MonoBehaviour
             saveDialogCancelButton.onClick.AddListener(OnSaveDialogCancel);
         }
 
-        _currentMode = HasConfirmedAtLeastOnce ? BarMode.FullCatalog : BarMode.DetectedOnly;
+        HasConfirmedAtLeastOnce = false;
+        _currentMode = BarMode.DetectedOnly;
 
         RefreshBar();
     }
@@ -250,6 +274,7 @@ public class DetectedCategoriesUI : MonoBehaviour
     public void BuildCategoriesFromJson()
     {
         _cats.Clear();
+        _lastDetectedFiltered.Clear();
 
         foreach (Transform t in categoriesContent)
         {
@@ -272,8 +297,21 @@ public class DetectedCategoriesUI : MonoBehaviour
 
         foreach (var d in wrapper.detections)
         {
-            if (d == null || string.IsNullOrEmpty(d.categoryName)) continue;
-            _cats.Add(d.categoryName.Trim());
+            if (d == null || string.IsNullOrEmpty(d.categoryName))
+                continue;
+
+            var cat = d.categoryName.Trim();
+
+      
+            if (allowedDetectedCategories != null &&
+                allowedDetectedCategories.Count > 0 &&
+                !allowedDetectedCategories.Contains(cat))
+            {
+                continue;
+            }
+
+            _cats.Add(cat);
+            _lastDetectedFiltered.Add(cat);
         }
 
         foreach (var cat in _cats)
@@ -299,10 +337,21 @@ public class DetectedCategoriesUI : MonoBehaviour
             Destroy(t.gameObject);
         }
 
-        foreach (var cat in allCatalogCategories)
+        // Categorías que realmente se detectaron 
+        foreach (var cat in _lastDetectedFiltered)
         {
-            if (string.IsNullOrWhiteSpace(cat)) continue;
-            _cats.Add(cat.Trim());
+            if (!string.IsNullOrWhiteSpace(cat))
+                _cats.Add(cat.Trim());
+        }
+
+        // Categorías extra 
+        if (extraOfferedCategories != null)
+        {
+            foreach (var extra in extraOfferedCategories)
+            {
+                if (!string.IsNullOrWhiteSpace(extra))
+                    _cats.Add(extra.Trim());
+            }
         }
 
         foreach (var cat in _cats)
@@ -324,6 +373,7 @@ public class DetectedCategoriesUI : MonoBehaviour
         {
             btn.onClick.AddListener(() =>
             {
+                Debug.Log($"[Roomify] Click categoría: '{category}'");
                 OnCategorySelected.Invoke(category);
 
                 if (catalogLoader != null)
@@ -419,8 +469,8 @@ public class DetectedCategoriesUI : MonoBehaviour
         {
             Debug.Log("[DetectedCategoriesUI] roomSaving encontrado, procediendo a guardar...");
 
-            roomSaving.spaceName   = nombre;
-            roomSaving.roomId      = nombre;
+            roomSaving.spaceName = nombre;
+            roomSaving.roomId = nombre;
             roomSaving.saveFileName = nombre + ".json";
 
             try
@@ -433,15 +483,15 @@ public class DetectedCategoriesUI : MonoBehaviour
             }
         }
 
-    #if UNITY_ANDROID && !UNITY_EDITOR
+#if UNITY_ANDROID && !UNITY_EDITOR
         Debug.Log("[DetectedCategoriesUI] En Android: llamando a Application.Quit().");
         Application.Quit();
-    #endif
+#endif
 
-    #if UNITY_EDITOR
+#if UNITY_EDITOR
         Debug.Log("[DetectedCategoriesUI] En Editor: deteniendo modo Play.");
         UnityEditor.EditorApplication.isPlaying = false;
-    #endif
+#endif
 
         if (saveDialogPanel != null)
         {
@@ -511,13 +561,16 @@ public class DetectedCategoriesUI : MonoBehaviour
         return s switch
         {
             "chair" => "Silla",
-            "sofa" => "Sofá",
+            "couch" or "sofa" => "Sofá",
+            "furniture" => "Mesas",
             "table" => "Mesa",
+            "bed" => "Cama",
             "screen" or "monitor" or "television" => "Monitor",
             "computer_mouse" or "mouse" => "Mouse",
             "computer_keyboard" or "keyboard" => "Teclado",
-            "lamp" or "lampara" or "lámpara" => "Lámpara",
-            "plant" => "Planta",
+            "lamp" => "Lámpara",
+            "plant" or "potted_plant" => "Planta",
+            "escritorio" => "Escritorio",
             _ => char.ToUpper(raw[0]) + raw.Substring(1)
         };
     }

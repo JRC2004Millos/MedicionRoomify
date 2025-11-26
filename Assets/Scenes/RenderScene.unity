@@ -636,6 +636,9 @@ MonoBehaviour:
   - plant
   - pc
   - furniture
+  extraOfferedCategories:
+  - escritorio
+  - sofa
   ConfirmButton: {fileID: 1475644385863718904, guid: dc525e32b184db543a55645de2658597,
     type: 3}
 --- !u!1 &252368693
@@ -1233,7 +1236,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   layoutOverridePath: 
   sceneSurfaces: []
-  furniturePrefabs: []
+  wallThickness: 0.1
+  defaultFloorMaterial: {fileID: 0}
+  defaultWallMaterial: {fileID: 0}
+  roomSpace: {fileID: 0}
+  catalogBasePath: Catalog
 --- !u!4 &758119725
 Transform:
   m_ObjectHideFlags: 0
@@ -1414,7 +1421,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   layoutOverridePath: 
   sceneSurfaces: []
-  furniturePrefabs: []
+  wallThickness: 0.1
+  defaultFloorMaterial: {fileID: 0}
+  defaultWallMaterial: {fileID: 0}
+  roomSpace: {fileID: 0}
+  catalogBasePath: Catalog
 --- !u!4 &860611094
 Transform:
   m_ObjectHideFlags: 0

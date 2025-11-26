@@ -20,7 +20,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &7508040225912049162
 RectTransform:
   m_ObjectHideFlags: 0
@@ -156,7 +156,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   dropPlacer: {fileID: 0}
-  dragGhostImage: {fileID: 0}
   itemPrefab: {fileID: 0}
   itemThumb: {fileID: 0}
 --- !u!1 &8406355882860593643

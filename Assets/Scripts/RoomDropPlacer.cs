@@ -236,30 +236,35 @@ public class RoomDropPlacer : MonoBehaviour
         if (n.Contains("silla") || n.Contains("chair"))
             return 0.9f;
 
-        if (n.Contains("mesa") || n.Contains("table") || n.Contains("desk"))
+        if (n.Contains("mesa") || n.Contains("table"))
+            return 0.8f;
+
+        if(n.Contains("desk"))
             return 0.75f;
 
         if (n.Contains("sofa") || n.Contains("sofá") || n.Contains("couch"))
             return 0.85f;
 
-        if (n.Contains("monitor") || n.Contains("screen"))
-            return 0.45f;
-
-        if (n.Contains("keyboard") || n.Contains("teclado"))
-            return 0.04f;
-        if (n.Contains("mouse"))
-            return 0.04f;
-
         if (n.Contains("lamp") || n.Contains("lampara") || n.Contains("lámpara"))
             return n.Contains("desk") ? 0.5f : 1.6f;
 
-        if (n.Contains("pc") || n.Contains("computer"))
-            return 0.45f;
-        if (n.Contains("laptop"))
-            return 0.025f;
-
         if (n.Contains("furniture"))
             return 0.8f;
+
+        if (n.Contains("cama"))
+            return 1f;
+
+        if (n.Contains("mesita"))
+            return 0.5f;
+
+        if (n.Contains("banco") || n.Contains("bench"))
+            return 0.7f;
+
+        if(n.Contains("circular"))
+            return 0.1f;
+
+        if(n.Contains("arbol"))
+            return 1f;    
 
         return Mathf.Clamp(maxHeightM * 0.6f, 0.4f, 1.2f);
     }
