@@ -639,6 +639,11 @@ MonoBehaviour:
   extraOfferedCategories:
   - escritorio
   - sofa
+  - bed
+  - lamp
+  - potted_plant
+  - chair
+  - furniture
   ConfirmButton: {fileID: 1475644385863718904, guid: dc525e32b184db543a55645de2658597,
     type: 3}
 --- !u!1 &252368693
@@ -2355,6 +2360,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   roomId: habitacion_001
   spaceName: 
+  currentLayoutPath: 
   saveFileName: 
   furnitureTag: Furniture
 --- !u!4 &1299156370
@@ -3757,6 +3763,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   roomId: habitacion_001
   spaceName: 
+  currentLayoutPath: 
   saveFileName: 
   furnitureTag: Furniture
 --- !u!1 &1844953792

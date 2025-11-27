@@ -65,9 +65,10 @@ public class DetectedCategoriesUI : MonoBehaviour
     [SerializeField]
     private List<string> extraOfferedCategories = new List<string>
     {
+        "furniture",
         "escritorio",
         "sofa",
-        "chair", 
+        "chair",
         "lamp",
         "potted_plant",
         "bed"
@@ -306,7 +307,7 @@ public class DetectedCategoriesUI : MonoBehaviour
 
             var cat = d.categoryName.Trim();
 
-      
+
             if (allowedDetectedCategories != null &&
                 allowedDetectedCategories.Count > 0 &&
                 !allowedDetectedCategories.Contains(cat))

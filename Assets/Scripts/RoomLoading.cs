@@ -37,23 +37,13 @@ public class RoomLoading : MonoBehaviour
     private static readonly string[] CatalogFolders =
     {
         "",
-        "Monitor",
-        "Mouse",
-        "Keyboard",
-        "Plant",
-        "Sofa",
-        "Lamp",
-        "Table",
+        "furniture",
+        "escritorio",
+        "sofa",
         "chair",
-        "chairs",
-        "sofas",
-        "mesas",
-        "screens",
-        "mouse",
-        "keyboards",
-        "pc",
-        "lamparas",
-        "furniture"
+        "lamp",
+        "potted_plant",
+        "bed"
     };
 
     private void Awake()

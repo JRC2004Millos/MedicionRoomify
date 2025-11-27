@@ -40,31 +40,56 @@ public class CategoryItemsLoader : MonoBehaviour
     static readonly Dictionary<string, string> CatMap = new(StringComparer.OrdinalIgnoreCase)
 {
     // sillas
-    { "silla", "chair" }, { "chairs", "chair" }, { "chair", "chair" },
+    { "silla", "chair" },
+    { "chairs", "chair" },
+    { "chair", "chair" },
 
     // sofás
-    { "sofa", "sofa" }, { "sofá", "sofa" }, { "sofas", "sofa" }, { "couch", "sofa" },
+    { "sofa", "sofa" },
+    { "sofá", "sofa" },
+    { "sofas", "sofa" },
+    { "couch", "sofa" },
 
     // mesas / escritorios
-    { "mesa", "furniture" }, { "table", "furniture" }, { "tables", "furniture" },
+    { "mesa", "furniture" },
+    { "mesas", "furniture" },
+    { "table", "furniture" },
+    { "tables", "furniture" },
+    { "escritorio", "escritorio" },
+
+    // camas 
+    { "bed", "bed" },
+    { "cama", "bed" },
 
     // monitores/pantallas
-    { "monitor", "screen" }, { "screen", "screen" }, { "television", "screen" },
+    { "monitor", "screen" },
+    { "screen", "screen" },
+    { "television", "screen" },
 
     // mouse
-    { "computer_mouse", "computer_mouse" }, { "mouse", "computer_mouse" },
+    { "computer_mouse", "computer_mouse" },
+    { "mouse", "computer_mouse" },
 
     // teclados
-    { "computer_keyboard", "computer_keyboard" }, { "keyboard", "computer_keyboard" }, { "teclado", "computer_keyboard" },
+    { "computer_keyboard", "computer_keyboard" },
+    { "keyboard", "computer_keyboard" },
+    { "teclado", "computer_keyboard" },
 
     // computadoras
-    { "pc", "pc" }, { "computer", "pc" }, { "computadora", "pc" }, { "laptop", "pc" },
+    { "pc", "pc" },
+    { "computer", "pc" },
+    { "computadora", "pc" },
+    { "laptop", "pc" },
 
-    // lámparas
-    { "lampara", "lampara" }, { "lámpara", "lampara" }, { "lamp", "lampara" },
+    // lámparas 
+    { "lampara", "lamp" },
+    { "lámpara", "lamp" },
+    { "lamp", "lamp" },
 
-    // plantas
-    { "potted_plant", "potted_plant" }, { "plant", "potted_plant" },
+    // plantas 
+    { "potted_plant", "potted_plant" },
+    { "plant", "potted_plant" },
+    { "planta", "potted_plant" },
 
     // genérico niantic
     { "furniture", "furniture" },

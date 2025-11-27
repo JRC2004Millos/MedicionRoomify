@@ -21,7 +21,7 @@ public class RoomSaving : MonoBehaviour
     [Tooltip("Nombre de la Tag que usan los muebles colocados en la escena (deja vacío para no guardar objetos).")]
     public string furnitureTag = "Furniture";
 
-    private const string ROOM_DATA_FILE_NAME      = "room_data.json";
+    private const string ROOM_DATA_FILE_NAME = "room_data.json";
     private const string TEXTURES_MODEL_FILE_NAME = "textures_model.json";
 
 
@@ -79,11 +79,11 @@ public class RoomSaving : MonoBehaviour
         {
             data = new FinalRoomModel
             {
-                roomId    = roomId,
+                roomId = roomId,
                 spaceName = string.IsNullOrEmpty(spaceName) ? roomId : spaceName,
-                geometry  = null,
-                textures  = new List<CombinedTextureData>(),
-                items     = new List<FurnitureItemData>()
+                geometry = null,
+                textures = new List<CombinedTextureData>(),
+                items = new List<FurnitureItemData>()
             };
         }
 
@@ -113,7 +113,7 @@ public class RoomSaving : MonoBehaviour
             if (data.geometry == null)
                 Debug.LogWarning("[RoomSaving] No hay room_data.json y el layout previo no tenía geometry. geometry quedará nulo.");
         }
-        
+
         if (hasTex)
         {
             try
@@ -191,9 +191,9 @@ public class RoomSaving : MonoBehaviour
                 prefabName = prefabName.Substring(0, cloneIndex);
 
             item.prefabName = prefabName;
-            item.position   = go.transform.position;
-            item.rotation   = go.transform.rotation;
-            item.scale      = go.transform.localScale;
+            item.position = go.transform.position;
+            item.rotation = go.transform.rotation;
+            item.scale = go.transform.localScale;
 
             data.items.Add(item);
         }
@@ -254,10 +254,10 @@ public class TextureModelRoot
 [Serializable]
 public class FurnitureItemData
 {
-    public string    prefabName;
-    public Vector3   position;
+    public string prefabName;
+    public Vector3 position;
     public Quaternion rotation;
-    public Vector3   scale;
+    public Vector3 scale;
 }
 
 [Serializable]
