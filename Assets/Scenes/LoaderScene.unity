@@ -639,6 +639,11 @@ MonoBehaviour:
   extraOfferedCategories:
   - escritorio
   - sofa
+  - potted
+  - lamp
+  - bed
+  - chair
+  - furniture
   ConfirmButton: {fileID: 1475644385863718904, guid: dc525e32b184db543a55645de2658597,
     type: 3}
 --- !u!1 &252368693
@@ -2311,6 +2316,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   roomId: habitacion_001
   spaceName: 
+  currentLayoutPath: 
   saveFileName: 
   furnitureTag: Furniture
 --- !u!4 &1299156370
@@ -3636,6 +3642,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   roomId: habitacion_001
   spaceName: 
+  currentLayoutPath: 
   saveFileName: 
   furnitureTag: Furniture
 --- !u!1 &1844953792
@@ -4064,74 +4071,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2112355551}
   m_CullTransparentMesh: 1
---- !u!1001 &5663411453342359751
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 271945238900694819, guid: 2cc86ba3d4c9d4bd88e73b3f5b18d68a,
-        type: 3}
-      propertyPath: m_Name
-      value: Lamp_Ant
-      objectReference: {fileID: 0}
-    - target: {fileID: 616417475587245465, guid: 2cc86ba3d4c9d4bd88e73b3f5b18d68a,
-        type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 723.2226
-      objectReference: {fileID: 0}
-    - target: {fileID: 616417475587245465, guid: 2cc86ba3d4c9d4bd88e73b3f5b18d68a,
-        type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 616417475587245465, guid: 2cc86ba3d4c9d4bd88e73b3f5b18d68a,
-        type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 340.22195
-      objectReference: {fileID: 0}
-    - target: {fileID: 616417475587245465, guid: 2cc86ba3d4c9d4bd88e73b3f5b18d68a,
-        type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 616417475587245465, guid: 2cc86ba3d4c9d4bd88e73b3f5b18d68a,
-        type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 616417475587245465, guid: 2cc86ba3d4c9d4bd88e73b3f5b18d68a,
-        type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 616417475587245465, guid: 2cc86ba3d4c9d4bd88e73b3f5b18d68a,
-        type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 616417475587245465, guid: 2cc86ba3d4c9d4bd88e73b3f5b18d68a,
-        type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 616417475587245465, guid: 2cc86ba3d4c9d4bd88e73b3f5b18d68a,
-        type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 616417475587245465, guid: 2cc86ba3d4c9d4bd88e73b3f5b18d68a,
-        type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 2cc86ba3d4c9d4bd88e73b3f5b18d68a, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -4148,4 +4087,3 @@ SceneRoots:
   - {fileID: 839847631}
   - {fileID: 1299156370}
   - {fileID: 758119725}
-  - {fileID: 5663411453342359751}

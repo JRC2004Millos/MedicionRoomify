@@ -42,7 +42,7 @@ public class RoomLoading : MonoBehaviour
         "sofa",
         "chair",
         "lamp",
-        "potted_plant",
+        "potted",
         "bed"
     };
 
